@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { BadgeCheck, Search, Sparkles, Star, Trophy } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { BadgeCheck, Search, Sparkles, Star, Trophy, X } from "lucide-react";
 
 type Booster = {
   name: string;
@@ -17,9 +18,20 @@ type Booster = {
 };
 
 export default function BoosterBrowsePage() {
+  const searchParams = useSearchParams();
   const [selectedGame, setSelectedGame] = useState("all");
   const [selectedRank, setSelectedRank] = useState("all");
   const [sortBy, setSortBy] = useState<"game" | "popularity" | "rating" | "rank">("rating");
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [loginType, setLoginType] = useState<"booster" | "client">("booster");
+  const [searchText, setSearchText] = useState("");
+
+  const scope = searchParams.get("scope")?.toLowerCase();
+  const searchScope = scope === "clients" || scope === "boosters" ? scope : "all";
+
+  useEffect(() => {
+    setSearchText(searchParams.get("q") ?? "");
+  }, [searchParams]);
 
   const boosters: Booster[] = [
     {
@@ -83,10 +95,22 @@ export default function BoosterBrowsePage() {
   );
 
   const visibleBoosters = useMemo(() => {
+    if (searchScope === "clients") {
+      return [];
+    }
+
+    const term = searchText.trim().toLowerCase();
+
     const filtered = boosters.filter((booster) => {
       const gameMatches = selectedGame === "all" || booster.game === selectedGame;
       const rankMatches = selectedRank === "all" || booster.rank === selectedRank;
-      return gameMatches && rankMatches;
+      const textMatches =
+        term.length === 0 ||
+        booster.name.toLowerCase().includes(term) ||
+        booster.game.toLowerCase().includes(term) ||
+        booster.rank.toLowerCase().includes(term);
+
+      return gameMatches && rankMatches && textMatches;
     });
 
     return filtered.sort((a, b) => {
@@ -104,7 +128,7 @@ export default function BoosterBrowsePage() {
 
       return Number.parseFloat(b.rating) - Number.parseFloat(a.rating);
     });
-  }, [boosters, selectedGame, selectedRank, sortBy]);
+  }, [boosters, searchScope, searchText, selectedGame, selectedRank, sortBy]);
 
   const renderRankIcon = (icon: string) => {
     switch (icon) {
@@ -124,7 +148,12 @@ export default function BoosterBrowsePage() {
     <>
       <header className="ghost-border fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface-variant/70 backdrop-blur-xl">
         <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-8 font-headline tracking-tight">
-          <div className="text-2xl font-bold tracking-tighter text-primary-fixed">Zenith Boost</div>
+          <Link
+            href="/"
+            className="text-2xl font-bold tracking-tighter text-primary-fixed transition hover:text-primary"
+          >
+            Zenith Boost
+          </Link>
 
           <div className="flex items-center gap-2">
             <Link
@@ -157,13 +186,7 @@ export default function BoosterBrowsePage() {
             </a>
             <button
               type="button"
-              aria-label="Search"
-              className="top-panel-icon"
-            >
-              <Search size={18} />
-            </button>
-            <button
-              type="button"
+              onClick={() => setIsLoginOpen(true)}
               className="top-panel-link px-2 py-2 text-sm font-bold uppercase tracking-wide"
             >
               Login
@@ -185,7 +208,7 @@ export default function BoosterBrowsePage() {
               </p>
             </div>
 
-            <div className="ghost-border mb-8 grid grid-cols-1 gap-3 rounded-xl bg-surface-container p-4 md:grid-cols-3">
+            <div className="ghost-border mb-8 grid grid-cols-1 gap-3 rounded-xl bg-surface-container p-4 md:grid-cols-4">
               <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
                 Filter By Game
                 <select
@@ -231,54 +254,173 @@ export default function BoosterBrowsePage() {
                   <option value="rank">Booster Rank In Server</option>
                 </select>
               </label>
+
+              <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                Search
+                <input
+                  type="text"
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                  placeholder="Name, game, or rank"
+                  className="mt-2 w-full rounded-md border border-outline/30 bg-surface-container-high px-3 py-2 text-sm text-on-surface outline-none transition focus:border-primary"
+                />
+              </label>
+            </div>
+
+            <div className="mb-5 flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-wider">
+              <span className="rounded-full border border-outline/25 bg-surface-container-high px-3 py-1.5 text-on-surface-variant">
+                Scope: {searchScope}
+              </span>
+              {searchText.trim() ? (
+                <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1.5 text-primary">
+                  Query: {searchText}
+                </span>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-              {visibleBoosters.map((booster) => (
-                <div
-                  key={booster.name}
-                  className="group ghost-border overflow-hidden rounded-xl bg-surface-container-highest"
-                >
-                  <div className="relative h-64 overflow-hidden">
-                    <img
-                      className="h-full w-full object-cover grayscale transition-all duration-500 group-hover:scale-110 group-hover:grayscale-0"
-                      alt={`${booster.name} profile`}
-                      src={booster.image}
-                    />
-                    {booster.live ? (
-                      <div className="absolute left-4 top-4 rounded bg-tertiary px-3 py-1 text-[10px] font-black uppercase tracking-tighter">
-                        Live Now
+              {visibleBoosters.length > 0 ? (
+                visibleBoosters.map((booster) => (
+                  <div
+                    key={booster.name}
+                    className="group ghost-border overflow-hidden rounded-xl bg-surface-container-highest"
+                  >
+                    <div className="relative h-64 overflow-hidden">
+                      <img
+                        className="h-full w-full object-cover grayscale transition-all duration-500 group-hover:scale-110 group-hover:grayscale-0"
+                        alt={`${booster.name} profile`}
+                        src={booster.image}
+                      />
+                      {booster.live ? (
+                        <div className="absolute left-4 top-4 rounded bg-tertiary px-3 py-1 text-[10px] font-black uppercase tracking-tighter">
+                          Live Now
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="p-6">
+                      <div className="mb-4 flex items-start justify-between">
+                        <div>
+                          <h4 className="font-headline text-xl font-bold">{booster.name}</h4>
+                          <p className="text-xs uppercase tracking-widest text-on-surface-variant">
+                            {booster.game}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 text-primary">
+                          <Star size={14} className="fill-current" />
+                          <span className="font-bold">{booster.rating}</span>
+                        </div>
                       </div>
-                    ) : null}
+                      <div className="ghost-border flex items-center gap-3 rounded-md bg-surface-dim px-4 py-3">
+                        <span className="text-secondary">{renderRankIcon(booster.rankIcon)}</span>
+                        <span className="text-sm font-bold uppercase tracking-tight">{booster.rank}</span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                        <span>Popularity</span>
+                        <span className="text-primary">{booster.popularity}%</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-6">
-                    <div className="mb-4 flex items-start justify-between">
-                      <div>
-                        <h4 className="font-headline text-xl font-bold">{booster.name}</h4>
-                        <p className="text-xs uppercase tracking-widest text-on-surface-variant">
-                          {booster.game}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 text-primary">
-                        <Star size={14} className="fill-current" />
-                        <span className="font-bold">{booster.rating}</span>
-                      </div>
-                    </div>
-                    <div className="ghost-border flex items-center gap-3 rounded-md bg-surface-dim px-4 py-3">
-                      <span className="text-secondary">{renderRankIcon(booster.rankIcon)}</span>
-                      <span className="text-sm font-bold uppercase tracking-tight">{booster.rank}</span>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                      <span>Popularity</span>
-                      <span className="text-primary">{booster.popularity}%</span>
-                    </div>
-                  </div>
+                ))
+              ) : (
+                <div className="ghost-border rounded-xl bg-surface-container-high p-8 md:col-span-4">
+                  <p className="text-sm font-semibold uppercase tracking-wider text-on-surface-variant">
+                    {searchScope === "clients"
+                      ? "No client search results available on the booster browse page."
+                      : "No boosters matched your search input."}
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </section>
       </main>
+
+      {isLoginOpen ? (
+        <div
+          className="modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-background/65 px-4 backdrop-blur-md"
+          onClick={() => setIsLoginOpen(false)}
+        >
+          <div
+            className="modal-panel-enter ghost-border w-full max-w-lg rounded-2xl border border-outline/30 bg-surface-container/85 p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-headline text-3xl font-bold tracking-tight text-primary-fixed">
+                  Welcome Back
+                </h3>
+                <p className="mt-2 text-sm text-on-surface-variant">
+                  Sign in as a booster or client to continue.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLoginOpen(false)}
+                className="rounded-md p-2 text-on-surface-variant transition-colors hover:bg-surface-variant/50 hover:text-on-surface"
+                aria-label="Close login modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mb-6 grid grid-cols-2 gap-2 rounded-lg bg-surface-dim p-1">
+              <button
+                type="button"
+                onClick={() => setLoginType("booster")}
+                className={`rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
+                  loginType === "booster"
+                    ? "primary-gradient text-on-primary-fixed"
+                    : "text-on-surface-variant hover:bg-surface-variant/60"
+                }`}
+              >
+                Booster Login
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginType("client")}
+                className={`rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
+                  loginType === "client"
+                    ? "primary-gradient text-on-primary-fixed"
+                    : "text-on-surface-variant hover:bg-surface-variant/60"
+                }`}
+              >
+                Client Login
+              </button>
+            </div>
+
+            <form className="space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  {loginType === "booster" ? "Booster Email" : "Client Email"}
+                </label>
+                <input
+                  type="email"
+                  placeholder={loginType === "booster" ? "booster@email.com" : "client@email.com"}
+                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
+                />
+              </div>
+
+              <button
+                type="button"
+                className="primary-gradient mt-2 w-full rounded-md px-5 py-3 font-bold uppercase tracking-wide text-on-primary-fixed"
+              >
+                {loginType === "booster" ? "Login as Booster" : "Login as Client"}
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Bell,
   BellOff,
@@ -72,9 +73,12 @@ export default function BoosterDashboardPage() {
     <>
       <header className="fixed top-0 z-50 flex h-16 w-full items-center justify-between border-b border-white/10 bg-slate-950/70 px-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] backdrop-blur-xl">
         <div className="flex items-center gap-8">
-          <span className="font-headline text-2xl font-bold tracking-tighter text-cyan-400">
+          <Link
+            href="/"
+            className="font-headline text-2xl font-bold tracking-tighter text-cyan-400 transition hover:text-cyan-300"
+          >
             ZENITH BOOST
-          </span>
+          </Link>
         </div>
 
         <div className="flex items-center gap-4">

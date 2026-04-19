@@ -337,36 +337,125 @@ textarea {
 @keyframes modalOverlayIn {
   from {
     opacity: 0;
-    backdrop-filter: blur(0px);
   }
   to {
     opacity: 1;
-    backdrop-filter: blur(10px);
   }
 }
 
 @keyframes modalPanelIn {
   0% {
     opacity: 0;
-    transform: translateY(16px) scale(0.97);
-    filter: blur(3px);
+    transform: translate3d(0, 16px, 0) scale(0.97);
   }
   60% {
     opacity: 1;
-    transform: translateY(-2px) scale(1.005);
-    filter: blur(0px);
+    transform: translate3d(0, -2px, 0) scale(1.005);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0px);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 .modal-overlay-enter {
-  animation: modalOverlayIn 220ms ease-out both;
+  animation: modalOverlayIn 180ms linear both;
+  will-change: opacity;
 }
 
 .modal-panel-enter {
-  animation: modalPanelIn 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: modalPanelIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+@keyframes comingSoonPulse {
+  0% {
+    opacity: 0.92;
+    transform: translate3d(0, 0px, 0) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(0, -2px, 0) scale(1.012);
+  }
+  100% {
+    opacity: 0.92;
+    transform: translate3d(0, 0px, 0) scale(1);
+  }
+}
+
+@keyframes panelFloatIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.97);
+  }
+  65% {
+    opacity: 1;
+    transform: translate3d(0, -2px, 0) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0px, 0) scale(1);
+  }
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translate3d(0, 14px, 0) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.45;
+  }
+  45% {
+    transform: translate3d(16px, -20vh, 0) rotate(85deg);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translate3d(-14px, -52vh, 0) rotate(160deg);
+    opacity: 0.42;
+  }
+  100% {
+    transform: translate3d(8px, -78vh, 0) rotate(220deg);
+    opacity: 0;
+  }
+}
+
+.coming-soon-aurora {
+  background:
+    radial-gradient(circle at 18% 32%, rgba(20, 214, 255, 0.24), transparent 32%),
+    radial-gradient(circle at 82% 66%, rgba(17, 198, 179, 0.18), transparent 34%),
+    radial-gradient(circle at 54% 8%, rgba(45, 213, 255, 0.16), transparent 30%),
+    linear-gradient(150deg, rgba(8, 13, 28, 0.95) 0%, rgba(9, 20, 34, 0.92) 46%, rgba(4, 12, 20, 0.97) 100%);
+}
+
+.coming-soon-panel {
+  animation: panelFloatIn 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.coming-soon-title {
+  text-shadow:
+    0 0 20px rgba(20, 214, 255, 0.36),
+    0 0 40px rgba(20, 214, 255, 0.15);
+  animation: comingSoonPulse 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.gaming-particle {
+  position: absolute;
+  bottom: -2.75rem;
+  color: rgba(143, 245, 255, 0.68);
+  filter: drop-shadow(0 0 10px rgba(20, 214, 255, 0.28));
+  animation-name: particleFloat;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }

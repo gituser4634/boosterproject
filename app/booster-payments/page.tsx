@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   Bell,
@@ -33,47 +34,38 @@ export default function BoosterPaymentsPage() {
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(2);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [availableBalance] = useState(0);
+  const [balanceChangePercent] = useState(0);
+  const [pendingPayouts] = useState(0);
+  const [settlementHours] = useState(0);
+  const [totalTaxable] = useState(0);
+  const [taxPeriodLabel] = useState("Tax Year 2024 • Fiscal Period Q3");
+  const [weeklyRevenue] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
+  const [completedOrders] = useState<OrderRow[]>([]);
 
   const avatarUrl =
     "https://lh3.googleusercontent.com/aida-public/AB6AXuDapUIVOD_ilqm2x_X4VRFqt6edOsJtLJ0XikXFt-loaNOdIiDlO-WYgaMbdy_4NfYdFggWxynEL9qdarpf6ZMJh_dueNcsvitr0HtruTzF4_8jVkJq41-2V6qBn1gWnDPFVOBr19eMKhRky0iIVPd8qJ_UtQIS5YqSKGH_4IBrEZeFbRQ1Rfom9T0QSTtclhU03o_7uvNmvSBtQutaXfPGvWDOpk5QMWqljwApq4BdfoXKE7GrsaMfKURLC-tFOE2is3J_I8Wo3_E";
 
-  const weeklyHeights = ["40%", "65%", "55%", "80%", "95%", "70%", "85%"];
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-  const completedOrders: OrderRow[] = [
-    {
-      id: "#ZB-89241",
-      date: "Oct 24, 2023",
-      service: "Rank Boost",
-      serviceTone: "secondary",
-      commission: "-$52.50",
-      netAmount: "$297.50",
-    },
-    {
-      id: "#ZB-89239",
-      date: "Oct 23, 2023",
-      service: "Duo Queue",
-      serviceTone: "tertiary",
-      commission: "-$12.00",
-      netAmount: "$68.00",
-    },
-    {
-      id: "#ZB-89235",
-      date: "Oct 21, 2023",
-      service: "Win Streak",
-      serviceTone: "secondary",
-      commission: "-$127.50",
-      netAmount: "$722.50",
-    },
-    {
-      id: "#ZB-89190",
-      date: "Oct 18, 2023",
-      service: "Rank Boost",
-      serviceTone: "secondary",
-      commission: "-$45.00",
-      netAmount: "$255.00",
-    },
-  ];
+  const formatCurrency = (value: number) =>
+    `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const formatPercent = (value: number) => `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+
+  const maxWeeklyRevenue = Math.max(...weeklyRevenue, 1);
+  const weeklyHeights = weeklyRevenue.map((value) => `${(value / maxWeeklyRevenue) * 100}%`);
+  const filteredOrders = completedOrders.filter((order) => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return true;
+
+    return (
+      order.id.toLowerCase().includes(term) ||
+      order.service.toLowerCase().includes(term) ||
+      order.date.toLowerCase().includes(term)
+    );
+  });
 
   const handleMarkNotificationsRead = () => {
     setUnreadNotificationCount(0);
@@ -115,9 +107,12 @@ export default function BoosterPaymentsPage() {
     <>
       <header className="fixed top-0 z-50 flex h-16 w-full items-center justify-between border-b border-white/10 bg-slate-950/70 px-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] backdrop-blur-xl">
         <div className="flex items-center gap-8">
-          <span className="font-headline text-2xl font-bold tracking-tighter text-cyan-400">
+          <Link
+            href="/"
+            className="font-headline text-2xl font-bold tracking-tighter text-cyan-400 transition hover:text-cyan-300"
+          >
             ZENITH BOOST
-          </span>
+          </Link>
         </div>
 
         <div className="flex items-center gap-4">
@@ -339,9 +334,9 @@ export default function BoosterPaymentsPage() {
               </label>
               <div className="mb-8 flex items-baseline gap-2">
                 <span className="font-headline text-6xl font-black tracking-tighter text-on-surface md:text-8xl">
-                  $12,450.00
+                  {formatCurrency(availableBalance)}
                 </span>
-                <span className="text-xl font-bold text-secondary">+12.5%</span>
+                <span className="text-xl font-bold text-secondary">{formatPercent(balanceChangePercent)}</span>
               </div>
 
               <div className="flex h-24 w-full items-end gap-2">
@@ -371,11 +366,11 @@ export default function BoosterPaymentsPage() {
                   <label className="font-label mb-1 block text-[10px] font-extrabold uppercase tracking-[0.2em] text-outline">
                     Pending Payouts
                   </label>
-                  <p className="font-headline text-4xl font-bold text-on-surface">$2,140.50</p>
+                  <p className="font-headline text-4xl font-bold text-on-surface">{formatCurrency(pendingPayouts)}</p>
                 </div>
                 <div className="mt-3 inline-flex w-fit items-center gap-2 rounded bg-tertiary/5 px-2 py-1 text-xs font-bold text-tertiary-dim">
                   <Bell className="h-3.5 w-3.5" />
-                  Settlement in 48h
+                  Settlement in {settlementHours}h
                 </div>
               </div>
 
@@ -384,9 +379,9 @@ export default function BoosterPaymentsPage() {
                   <label className="font-label mb-1 block text-[10px] font-extrabold uppercase tracking-[0.2em] text-outline">
                     Total Taxable
                   </label>
-                  <p className="font-headline text-4xl font-bold text-on-surface">$48,920.00</p>
+                  <p className="font-headline text-4xl font-bold text-on-surface">{formatCurrency(totalTaxable)}</p>
                 </div>
-                <p className="text-[10px] uppercase tracking-wider text-outline">Tax Year 2024 • Fiscal Period Q3</p>
+                <p className="text-[10px] uppercase tracking-wider text-outline">{taxPeriodLabel}</p>
               </div>
             </div>
           </section>
@@ -402,6 +397,8 @@ export default function BoosterPaymentsPage() {
                   <input
                     type="text"
                     placeholder="Search ID..."
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
                     className="w-48 rounded-sm border-none bg-surface-container-lowest py-2 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary"
                   />
                 </div>
@@ -437,38 +434,46 @@ export default function BoosterPaymentsPage() {
                 </thead>
 
                 <tbody className="divide-y divide-white/[0.02]">
-                  {completedOrders.map((order) => (
-                    <tr
-                      key={order.id}
-                      className="cursor-pointer transition-colors hover:bg-surface-bright"
-                    >
-                      <td className="px-6 py-5 font-headline font-bold text-on-surface">{order.id}</td>
-                      <td className="px-6 py-5 text-sm text-on-surface-variant">{order.date}</td>
-                      <td className="px-6 py-5">
-                        <span
-                          className={`rounded px-2 py-1 text-xs font-bold uppercase tracking-wider ${
-                            order.serviceTone === "secondary"
-                              ? "bg-secondary/10 text-secondary"
-                              : "bg-tertiary/10 text-tertiary"
-                          }`}
-                        >
-                          {order.service}
-                        </span>
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-2">
-                          <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(143,245,255,0.6)]"></span>
-                          <span className="text-xs font-bold uppercase tracking-wider">Completed</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-right text-sm font-medium text-error-dim">
-                        {order.commission}
-                      </td>
-                      <td className="px-6 py-5 text-right font-headline font-bold text-primary">
-                        {order.netAmount}
+                  {filteredOrders.length > 0 ? (
+                    filteredOrders.map((order) => (
+                      <tr
+                        key={order.id}
+                        className="cursor-pointer transition-colors hover:bg-surface-bright"
+                      >
+                        <td className="px-6 py-5 font-headline font-bold text-on-surface">{order.id}</td>
+                        <td className="px-6 py-5 text-sm text-on-surface-variant">{order.date}</td>
+                        <td className="px-6 py-5">
+                          <span
+                            className={`rounded px-2 py-1 text-xs font-bold uppercase tracking-wider ${
+                              order.serviceTone === "secondary"
+                                ? "bg-secondary/10 text-secondary"
+                                : "bg-tertiary/10 text-tertiary"
+                            }`}
+                          >
+                            {order.service}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-2">
+                            <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(143,245,255,0.6)]"></span>
+                            <span className="text-xs font-bold uppercase tracking-wider">Completed</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 text-right text-sm font-medium text-error-dim">
+                          {order.commission}
+                        </td>
+                        <td className="px-6 py-5 text-right font-headline font-bold text-primary">
+                          {order.netAmount}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="px-6 py-8 text-sm text-on-surface-variant" colSpan={6}>
+                        No payment data yet.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

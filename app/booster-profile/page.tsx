@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   AtSign,
@@ -506,9 +507,12 @@ export default function BoosterProfilePage() {
     <>
       <header className="fixed top-0 z-50 flex h-16 w-full items-center justify-between border-b border-white/5 bg-slate-950/70 px-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] backdrop-blur-xl">
         <div className="flex items-center gap-4">
-          <span className="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400 italic">
+          <Link
+            href="/"
+            className="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400 italic transition hover:text-cyan-300"
+          >
             ZENITH BOOSTER
-          </span>
+          </Link>
         </div>
         <div className="flex items-center gap-6">
           <div className="relative z-[55]">

@@ -5,12 +5,15 @@ import { useState } from "react";
 import {
   ArrowRight,
   BadgeCheck,
+  Gamepad2,
   Headset,
   PlayCircle,
+  Rocket,
   Search,
   ShieldCheck,
   Sparkles,
   Star,
+  Swords,
   Trophy,
   X,
 } from "lucide-react";
@@ -22,6 +25,9 @@ export default function StitchDesignPage() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [registerType, setRegisterType] = useState<"booster" | "client">("booster");
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchScope, setSearchScope] = useState<"all" | "clients" | "boosters">("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const featureCards = [
     {
@@ -139,11 +145,25 @@ export default function StitchDesignPage() {
     setIsRegisterOpen(true);
   };
 
+  const heroParticles = [Gamepad2, Trophy, Swords, Rocket, ShieldCheck, Sparkles, Gamepad2, Trophy];
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const scopedQuery = encodeURIComponent(searchQuery.trim());
+    window.location.href = `/booster-browse?scope=${searchScope}&q=${scopedQuery}`;
+    setIsSearchOpen(false);
+  };
+
   return (
     <>
       <header className="ghost-border fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface-variant/70 backdrop-blur-xl">
         <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-8 font-headline tracking-tight">
-          <div className="text-2xl font-bold tracking-tighter text-primary-fixed">Zenith Boost</div>
+          <Link
+            href="/"
+            className="text-2xl font-bold tracking-tighter text-primary-fixed transition hover:text-primary"
+          >
+            Zenith Boost
+          </Link>
 
           <div className="flex items-center gap-2">
             <Link
@@ -190,13 +210,64 @@ export default function StitchDesignPage() {
                 className="h-5 w-5 opacity-90"
               />
             </a>
-            <button
-              type="button"
-              aria-label="Search"
-              className="top-panel-icon"
-            >
-              <Search size={18} />
-            </button>
+            <div className="relative z-[70]">
+              <button
+                type="button"
+                aria-label="Search"
+                onClick={() => setIsSearchOpen((current) => !current)}
+                className="top-panel-icon"
+              >
+                <Search size={18} />
+              </button>
+
+              {isSearchOpen ? (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Close search panel"
+                    onClick={() => setIsSearchOpen(false)}
+                    className="fixed inset-0 z-[69] cursor-default"
+                  ></button>
+                  <form
+                    onSubmit={handleSearchSubmit}
+                    className="ghost-border absolute right-0 top-12 z-[70] w-[340px] rounded-xl border border-white/10 bg-surface-container/95 p-4 shadow-2xl"
+                  >
+                    <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                      Search In
+                    </label>
+                    <select
+                      value={searchScope}
+                      onChange={(event) =>
+                        setSearchScope(event.target.value as "all" | "clients" | "boosters")
+                      }
+                      className="mb-3 w-full rounded-md border border-outline/30 bg-surface-container-high px-3 py-2 text-sm uppercase tracking-wide text-on-surface outline-none transition focus:border-primary"
+                    >
+                      <option value="all">All</option>
+                      <option value="clients">Clients</option>
+                      <option value="boosters">Boosters</option>
+                    </select>
+
+                    <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                      Search Query
+                    </label>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Type a name, game, or rank..."
+                      className="mb-4 w-full rounded-md border border-outline/30 bg-surface-container-high px-3 py-2 text-sm text-on-surface outline-none transition focus:border-primary"
+                    />
+
+                    <button
+                      type="submit"
+                      className="cta-flame-soft cta-flame-soft-primary primary-gradient w-full rounded-md px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-on-primary-fixed"
+                    >
+                      Search
+                    </button>
+                  </form>
+                </>
+              ) : null}
+            </div>
             <button
               type="button"
               onClick={() => setIsLoginOpen(true)}
@@ -220,6 +291,28 @@ export default function StitchDesignPage() {
             <div className="absolute bottom-0 left-0 h-1/2 w-full bg-gradient-to-t from-background to-transparent"></div>
           </div>
 
+          <div className="pointer-events-none absolute inset-0 z-[5]">
+            {heroParticles.map((ParticleIcon, index) => (
+              <div
+                key={`hero-particle-${index}`}
+                className="gaming-particle"
+                style={{
+                  left: `${6 + index * 12}%`,
+                  animationDelay: `${index * 0.55}s`,
+                  animationDuration: `${7 + (index % 4)}s`,
+                  opacity: 0.55,
+                  color: index % 3 === 1 ? "rgba(196, 138, 255, 0.9)" : undefined,
+                  filter:
+                    index % 3 === 1
+                      ? "drop-shadow(0 0 10px rgba(168, 85, 247, 0.65)) drop-shadow(0 0 18px rgba(168, 85, 247, 0.45))"
+                      : undefined,
+                }}
+              >
+                <ParticleIcon className="h-4 w-4 md:h-5 md:w-5" />
+              </div>
+            ))}
+          </div>
+
           <div className="container relative z-10 mx-auto px-8">
             <div className="max-w-4xl">
               <span className="font-label mb-4 block text-xs uppercase tracking-[0.2em] text-primary">
@@ -237,13 +330,19 @@ export default function StitchDesignPage() {
                 Unleash your true potential with our secure and elite gaming performance platform.
               </p>
               <div className="flex flex-wrap gap-6">
-                <button className="flame-button primary-gradient ghost-border rounded-md px-10 py-5 text-lg font-bold text-on-primary-fixed transition-all hover:shadow-[0_0_36px_-6px_rgba(20,214,255,0.72)]">
+                <Link
+                  href="/level-up"
+                  className="flame-button primary-gradient ghost-border rounded-md px-10 py-5 text-lg font-bold text-on-primary-fixed transition-all hover:shadow-[0_0_36px_-6px_rgba(20,214,255,0.72)]"
+                >
                   LEVEL UP
-                </button>
-                <button className="flame-button-violet flex items-center gap-3 rounded-md border border-secondary/40 bg-surface-container-low/50 px-10 py-5 text-lg font-bold backdrop-blur-sm transition-colors hover:border-secondary">
+                </Link>
+                <Link
+                  href="/live-boosts"
+                  className="flame-button-violet flex items-center gap-3 rounded-md border border-secondary/40 bg-surface-container-low/50 px-10 py-5 text-lg font-bold backdrop-blur-sm transition-colors hover:border-secondary"
+                >
                   <PlayCircle size={22} />
                   VIEW LIVE BOOSTS
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -437,11 +536,11 @@ export default function StitchDesignPage() {
 
       {isLoginOpen ? (
         <div
-          className="modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-background/65 px-4 backdrop-blur-md"
+          className="modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-black/65 px-4"
           onClick={() => setIsLoginOpen(false)}
         >
           <div
-            className="modal-panel-enter ghost-border w-full max-w-lg rounded-2xl border border-outline/30 bg-surface-container/85 p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+            className="modal-panel-enter ghost-border w-full max-w-lg transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -530,10 +629,6 @@ export default function StitchDesignPage() {
                 If you&apos;re new here,
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsLoginOpen(false);
-                    openRegisterModal("client");
-                  }}
                   className="ml-1 font-semibold uppercase tracking-wider text-primary transition-colors hover:text-primary-fixed"
                 >
                   Register
@@ -546,11 +641,11 @@ export default function StitchDesignPage() {
 
       {isRegisterOpen ? (
         <div
-          className="fixed inset-0 z-[85] flex items-center justify-center bg-background/65 px-4 py-6 backdrop-blur-md"
+          className="fixed inset-0 z-[85] flex items-center justify-center bg-black/65 px-4 py-6"
           onClick={() => setIsRegisterOpen(false)}
         >
           <div
-            className="ghost-border w-full max-w-2xl rounded-2xl border border-outline/30 bg-surface-container/90 p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] backdrop-blur-xl"
+            className="ghost-border w-full max-w-2xl transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -707,11 +802,11 @@ export default function StitchDesignPage() {
 
       {isTermsOpen ? (
         <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-background/70 px-4 py-6 backdrop-blur-md"
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 px-4 py-6"
           onClick={() => setIsTermsOpen(false)}
         >
           <div
-            className="ghost-border w-full max-w-3xl rounded-2xl border border-outline/30 bg-surface-container/95 p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] backdrop-blur-xl"
+            className="ghost-border w-full max-w-3xl transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
