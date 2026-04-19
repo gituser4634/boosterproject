@@ -1,0 +1,1525 @@
+"use client";
+
+import { useState } from "react";
+import {
+  AtSign,
+  Bell,
+  BellOff,
+  ClipboardList,
+  Crown,
+  Edit3,
+  Gamepad2,
+  HelpCircle,
+  History,
+  LayoutDashboard,
+  Lock,
+  MessageSquare,
+  MonitorSmartphone,
+  Plus,
+  Settings,
+  Share2,
+  Shield,
+  Tv,
+  UserCircle,
+  UserRoundCheck,
+  Wallet,
+  X,
+} from "lucide-react";
+
+type GameEntry = {
+  id: number;
+  name: string;
+  rank: string;
+  accountId: string;
+};
+
+type SocialLinkEntry = {
+  id: number;
+  platform: string;
+  username: string;
+};
+
+export default function BoosterProfilePage() {
+  const defaultAvatar =
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuADGMPc58JnAfcBzvLyIo5qkqz861CqAi2kRXKqx1gjEj1mVFqKmSUA0k3Ns44qVLSgXff8Dvl4WYxynrhCwNlQYJZsB7RKOcVAlbN_YSTB5KHNvIKPWarZLEjKZ9drvUkaiEcYuyrGqSknaEs6XETy7d5Nz36mKTvrutxLGGwNmjIT_nmSIecap682d8zCb7UtNANKeC8rle5mD1MK6RpYT6cipd-PCiddufiYGwh-34mCU_nDN6NmTRRwSigIhSUc0vnSaT-IgwA";
+  const supportedLanguages = [
+    "English",
+    "Mandarin Chinese",
+    "Hindi",
+    "Spanish",
+    "French",
+    "Arabic",
+    "Bengali",
+    "Portuguese",
+    "Russian",
+    "Urdu",
+    "Indonesian",
+    "German",
+    "Japanese",
+    "Nigerian Pidgin",
+    "Marathi",
+    "Telugu",
+    "Turkish",
+    "Tamil",
+    "Vietnamese",
+    "Korean",
+  ];
+  const [isOnline, setIsOnline] = useState(true);
+  const [isNotificationsOn, setIsNotificationsOn] = useState(true);
+  const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(defaultAvatar);
+  const [uiMessage, setUiMessage] = useState("Ready");
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
+  const [languageToAdd, setLanguageToAdd] = useState("");
+  const supportedCountries = [
+    "United States",
+    "United Kingdom",
+    "Canada",
+    "Germany",
+    "France",
+    "Spain",
+    "Italy",
+    "Netherlands",
+    "Sweden",
+    "Norway",
+    "Finland",
+    "Turkey",
+    "Morocco",
+    "Tunisia",
+    "Algeria",
+    "Egypt",
+    "Saudi Arabia",
+    "United Arab Emirates",
+    "India",
+    "Japan",
+    "South Korea",
+    "Brazil",
+    "Mexico",
+    "Argentina",
+    "Australia",
+  ];
+  const [countryOfOrigin, setCountryOfOrigin] = useState("");
+  const [isCountryPickerOpen, setIsCountryPickerOpen] = useState(false);
+  const [countryToSet, setCountryToSet] = useState("");
+  const supportedGames = [
+    "CS2",
+    "APEX LEGENDS",
+    "DOTA 2",
+    "LEAGUE OF LEGENDS",
+    "Valorant",
+    "Brawlhalla",
+  ];
+  const gameRanks: Record<string, string[]> = {
+    CS2: ["Global Elite", "Legendary Eagle", "Distinguished Master", "Supreme", "DMG"],
+    "APEX LEGENDS": ["Apex Predator", "Master", "Diamond", "Platinum", "Gold"],
+    "DOTA 2": ["Immortal", "Divine", "Ancient", "Legend", "Archon"],
+    "LEAGUE OF LEGENDS": [
+      "Challenger",
+      "Grandmaster",
+      "Master",
+      "Diamond",
+      "Emerald",
+      "Platinum",
+    ],
+    Valorant: ["Radiant", "Immortal III", "Immortal II", "Immortal I", "Ascendant", "Diamond"],
+    Brawlhalla: ["Valhallan", "Diamond", "Platinum", "Gold", "Silver"],
+  };
+  const [activeGames, setActiveGames] = useState<GameEntry[]>([]);
+  const [nextGameId, setNextGameId] = useState(1);
+  const [isGamePickerOpen, setIsGamePickerOpen] = useState(false);
+  const [gameToAdd, setGameToAdd] = useState("");
+  const [rankToAdd, setRankToAdd] = useState("");
+  const supportedSocialPlatforms = [
+    "Twitch",
+    "Discord",
+    "Twitter (X)",
+    "YouTube",
+    "TikTok",
+    "Instagram",
+    "Steam",
+    "Xbox",
+    "PlayStation",
+  ];
+  const [socialLinks, setSocialLinks] = useState<SocialLinkEntry[]>([]);
+  const [nextSocialId, setNextSocialId] = useState(1);
+  const [isSocialPickerOpen, setIsSocialPickerOpen] = useState(false);
+  const [socialPlatformToAdd, setSocialPlatformToAdd] = useState("");
+  const [socialUsernameToAdd, setSocialUsernameToAdd] = useState("");
+  const [primaryGame, setPrimaryGame] = useState("");
+  const [isLogOpen, setIsLogOpen] = useState(false);
+  const [isDeactivated, setIsDeactivated] = useState(false);
+  const isLoggedInBooster = true;
+  const [passwordFields, setPasswordFields] = useState({
+    current: "",
+    next: "",
+    confirm: "",
+  });
+
+  const boosterNavLinks = [
+    { icon: "dashboard", label: "Dashboard", href: "#" },
+    { icon: "assignment", label: "Requests", href: "#" },
+    { icon: "payments", label: "Payments", href: "#" },
+    { icon: "forum", label: "Chats", href: "#" },
+  ];
+
+  const renderNavIcon = (icon: string, className: string) => {
+    if (icon === "dashboard") return <LayoutDashboard className={className} />;
+    if (icon === "assignment") return <ClipboardList className={className} />;
+    if (icon === "payments") return <Wallet className={className} />;
+    return <MessageSquare className={className} />;
+  };
+
+  const showStatus = (message: string) => {
+    setUiMessage(message);
+  };
+
+  const availableGames = supportedGames.filter(
+    (game) => !activeGames.some((active) => active.name === game)
+  );
+  const availableLanguages = supportedLanguages.filter(
+    (language) => !languages.some((active) => active.toLowerCase() === language.toLowerCase())
+  );
+  const availableSocialPlatforms = supportedSocialPlatforms.filter(
+    (platform) => !socialLinks.some((link) => link.platform === platform)
+  );
+
+  const handleToggleOnline = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Availability cannot be changed.");
+      return;
+    }
+
+    setIsOnline((current) => {
+      const next = !current;
+      showStatus(next ? "Status changed to Online." : "Status changed to Offline.");
+      return next;
+    });
+  };
+
+  const handleNotificationToggle = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Notifications are locked.");
+      return;
+    }
+
+    setIsNotificationsOn((current) => {
+      const next = !current;
+      showStatus(next ? "Notifications enabled." : "Notifications muted.");
+      return next;
+    });
+  };
+
+  const handleMarkNotificationsRead = () => {
+    setUnreadNotificationCount(0);
+    showStatus("Notifications marked as read.");
+  };
+
+  const handleProfileAction = (action: string) => {
+    setIsProfileMenuOpen(false);
+    showStatus(`${action} clicked.`);
+  };
+
+  const handleAvatarUpload = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Avatar cannot be changed.");
+      return;
+    }
+
+    const nextUrl = window.prompt("Paste avatar image URL", avatarUrl);
+    if (!nextUrl) {
+      showStatus("Avatar update canceled.");
+      return;
+    }
+
+    setAvatarUrl(nextUrl);
+    showStatus("Avatar updated successfully.");
+  };
+
+  const handleAvatarRemove = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Avatar cannot be changed.");
+      return;
+    }
+
+    setAvatarUrl(defaultAvatar);
+    showStatus("Avatar reset to default.");
+  };
+
+  const handleOpenLanguagePicker = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Languages cannot be changed.");
+      return;
+    }
+
+    if (availableLanguages.length === 0) {
+      showStatus("All supported languages are already added.");
+      return;
+    }
+
+    setLanguageToAdd(availableLanguages[0]);
+    setIsLanguagePickerOpen(true);
+  };
+
+  const handleOpenCountryPicker = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Country cannot be changed.");
+      return;
+    }
+
+    setCountryToSet(countryOfOrigin);
+    setIsCountryPickerOpen(true);
+  };
+
+  const handleSetCountryFromPicker = () => {
+    setCountryOfOrigin(countryToSet);
+    setIsCountryPickerOpen(false);
+    showStatus(`Country of origin set to ${countryToSet}.`);
+  };
+
+  const handleAddLanguageFromPicker = () => {
+    if (!languageToAdd) return;
+
+    setLanguages((current) => [...current, languageToAdd]);
+    setIsLanguagePickerOpen(false);
+    showStatus(`Language added: ${languageToAdd}`);
+  };
+
+  const handleRemoveLanguage = (name: string) => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Languages cannot be changed.");
+      return;
+    }
+
+    setLanguages((current) => current.filter((item) => item !== name));
+    showStatus(`Language removed: ${name}`);
+  };
+
+  const handleCredentialsUpdate = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Profile updates are disabled.");
+      return;
+    }
+    showStatus("Identity details updated locally.");
+  };
+
+  const handleCloseGame = (gameId: number) => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Game list cannot be changed.");
+      return;
+    }
+
+    setActiveGames((current) => {
+      const gameToRemove = current.find((game) => game.id === gameId);
+      const next = current.filter((game) => game.id !== gameId);
+      if (gameToRemove) {
+        showStatus(`${gameToRemove.name} removed from active list.`);
+      }
+      return next;
+    });
+  };
+
+  const handleOpenGamePicker = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Game list cannot be changed.");
+      return;
+    }
+
+    if (availableGames.length === 0) {
+      showStatus("All supported games are already added.");
+      return;
+    }
+
+    const firstGame = availableGames[0];
+    setGameToAdd(firstGame);
+    setRankToAdd(gameRanks[firstGame][0]);
+    setIsGamePickerOpen(true);
+  };
+
+  const handleGameSelectionChange = (game: string) => {
+    setGameToAdd(game);
+    setRankToAdd(gameRanks[game][0]);
+  };
+
+  const handleAddGameFromPicker = () => {
+    if (!gameToAdd) return;
+
+    setActiveGames((current) => [
+      ...current,
+      {
+        id: nextGameId,
+        name: gameToAdd,
+        rank: rankToAdd || gameRanks[gameToAdd][0],
+        accountId: "",
+      },
+    ]);
+    setNextGameId((current) => current + 1);
+    setIsGamePickerOpen(false);
+    showStatus(`${gameToAdd} added to active games.`);
+  };
+
+  const handleGameRankChange = (gameId: number, rank: string) => {
+    setActiveGames((current) =>
+      current.map((game) => (game.id === gameId ? { ...game, rank } : game))
+    );
+  };
+
+  const handleGameAccountIdChange = (gameId: number, accountId: string) => {
+    setActiveGames((current) =>
+      current.map((game) => (game.id === gameId ? { ...game, accountId } : game))
+    );
+  };
+
+  const handleSaveExpertise = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Service expertise cannot be saved.");
+      return;
+    }
+    showStatus("Service expertise saved locally.");
+  };
+
+  const handleOpenSocialPicker = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Social connections cannot be changed.");
+      return;
+    }
+
+    if (availableSocialPlatforms.length === 0) {
+      showStatus("All supported social platforms are already linked.");
+      return;
+    }
+
+    setSocialPlatformToAdd(availableSocialPlatforms[0]);
+    setSocialUsernameToAdd("");
+    setIsSocialPickerOpen(true);
+  };
+
+  const handleAddSocialFromPicker = () => {
+    if (!socialPlatformToAdd) return;
+
+    const trimmedUsername = socialUsernameToAdd.trim();
+    if (!trimmedUsername) {
+      showStatus("Enter a username/profile link first.");
+      return;
+    }
+
+    setSocialLinks((current) => [
+      ...current,
+      {
+        id: nextSocialId,
+        platform: socialPlatformToAdd,
+        username: trimmedUsername,
+      },
+    ]);
+    setNextSocialId((current) => current + 1);
+    setIsSocialPickerOpen(false);
+    showStatus(`${socialPlatformToAdd} profile linked.`);
+  };
+
+  const handleSocialUsernameChange = (socialId: number, username: string) => {
+    setSocialLinks((current) =>
+      current.map((item) => (item.id === socialId ? { ...item, username } : item))
+    );
+  };
+
+  const handleRemoveSocialLink = (socialId: number) => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Social connections cannot be changed.");
+      return;
+    }
+
+    setSocialLinks((current) => {
+      const removed = current.find((item) => item.id === socialId);
+      const next = current.filter((item) => item.id !== socialId);
+      if (removed) {
+        showStatus(`${removed.platform} unlinked.`);
+      }
+      return next;
+    });
+  };
+
+  const getSocialAccentClasses = (platform: string) => {
+    if (platform === "Twitch") return "bg-[#9146FF]/10 text-[#9146FF]";
+    if (platform === "Discord") return "bg-[#5865F2]/10 text-[#5865F2]";
+    if (platform === "Twitter (X)") return "bg-[#1DA1F2]/10 text-[#1DA1F2]";
+    if (platform === "YouTube") return "bg-[#FF0000]/10 text-[#FF0000]";
+    if (platform === "TikTok") return "bg-[#25F4EE]/10 text-[#25F4EE]";
+    if (platform === "Instagram") return "bg-[#E1306C]/10 text-[#E1306C]";
+    if (platform === "Steam") return "bg-[#66c0f4]/10 text-[#66c0f4]";
+    if (platform === "Xbox") return "bg-[#107C10]/10 text-[#107C10]";
+    if (platform === "PlayStation") return "bg-[#003791]/10 text-[#3f6dff]";
+    return "bg-primary/10 text-primary";
+  };
+
+  const handleChangePassword = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Password changes are disabled.");
+      return;
+    }
+    if (!passwordFields.current || !passwordFields.next || !passwordFields.confirm) {
+      showStatus("Fill in all password fields first.");
+      return;
+    }
+    if (passwordFields.next !== passwordFields.confirm) {
+      showStatus("New password and confirmation do not match.");
+      return;
+    }
+    setPasswordFields({ current: "", next: "", confirm: "" });
+    showStatus("Password changed locally.");
+  };
+
+  const handleToggleLog = () => {
+    setIsLogOpen((current) => {
+      const next = !current;
+      showStatus(next ? "Session logs expanded." : "Session logs collapsed.");
+      return next;
+    });
+  };
+
+  const handleTerminateAccount = () => {
+    if (isDeactivated) {
+      setIsDeactivated(false);
+      setIsOnline(true);
+      showStatus("Account reactivated locally.");
+      return;
+    }
+
+    const confirmed = window.confirm("Deactivate this account on frontend preview?");
+    if (!confirmed) {
+      showStatus("Account deactivation canceled.");
+      return;
+    }
+    setIsDeactivated(true);
+    setIsOnline(false);
+    showStatus("Account deactivated locally.");
+  };
+
+  return (
+    <>
+      <header className="fixed top-0 z-50 flex h-16 w-full items-center justify-between border-b border-white/5 bg-slate-950/70 px-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <span className="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400 italic">
+            ZENITH BOOSTER
+          </span>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="relative z-[55]">
+            <button
+              type="button"
+              onClick={() => {
+                setIsProfileMenuOpen(false);
+                setIsNotificationsPanelOpen((current) => !current);
+              }}
+              className={`transition-all duration-200 active:scale-95 ${
+                isNotificationsOn ? "text-cyan-300" : "text-red-400 hover:text-red-300"
+              }`}
+            >
+              {isNotificationsOn ? <Bell className="h-6 w-6" /> : <BellOff className="h-6 w-6" />}
+
+              {unreadNotificationCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                  {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                </span>
+              ) : null}
+            </button>
+
+            {isNotificationsPanelOpen ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Close notifications panel"
+                  onClick={() => setIsNotificationsPanelOpen(false)}
+                  className="fixed inset-0 z-[54] cursor-default"
+                ></button>
+                <div className="ghost-border absolute right-0 top-10 z-[55] w-[320px] rounded-xl border border-white/10 bg-surface-container p-4 shadow-2xl">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface">
+                      Notifications
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={handleMarkNotificationsRead}
+                      className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary-container"
+                    >
+                      Mark Read
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="rounded-md border border-white/5 bg-surface-container-low px-3 py-2">
+                      <p className="text-xs font-semibold text-on-surface">New boost request assigned</p>
+                      <p className="text-[10px] uppercase tracking-wider text-on-surface-variant">
+                        Valorant • 2 min ago
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-white/5 bg-surface-container-low px-3 py-2">
+                      <p className="text-xs font-semibold text-on-surface">Client sent you a message</p>
+                      <p className="text-[10px] uppercase tracking-wider text-on-surface-variant">
+                        Inbox • 14 min ago
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleNotificationToggle}
+                    className={`mt-3 flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-widest ${
+                      isNotificationsOn
+                        ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20"
+                        : "border-red-500/30 bg-red-500/15 text-red-300 hover:bg-red-500/25"
+                    }`}
+                  >
+                    {isNotificationsOn ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                    {isNotificationsOn ? "Mute Notifications" : "Unmute Notifications"}
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
+          <div className="relative z-[56]">
+            <button
+              type="button"
+              onClick={() => {
+                setIsNotificationsPanelOpen(false);
+                setIsProfileMenuOpen((current) => !current);
+              }}
+              className="h-8 w-8 overflow-hidden rounded-full border border-cyan-400/30"
+            >
+              <img
+                alt="Booster Profile Avatar"
+                className="h-full w-full object-cover"
+                src={avatarUrl}
+              />
+            </button>
+
+            {isProfileMenuOpen ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Close profile menu"
+                  onClick={() => setIsProfileMenuOpen(false)}
+                  className="fixed inset-0 z-[55] cursor-default"
+                ></button>
+                <div className="ghost-border absolute right-0 top-10 z-[56] w-[220px] rounded-xl border border-white/10 bg-surface-container p-2 shadow-2xl">
+                  {["View Profile", "Settings", "Help Support", "Logout"].map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => handleProfileAction(item)}
+                      className={`w-full rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-colors ${
+                        item === "Logout"
+                          ? "text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                          : "text-on-surface-variant hover:bg-white/10 hover:text-on-surface"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </header>
+
+      {isLoggedInBooster ? (
+      <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col bg-slate-900 pt-20 shadow-2xl shadow-black">
+        <div className="mb-4 flex flex-col items-center border-b border-white/5 px-6 py-4">
+          <div className="ghost-border mb-2 flex h-16 w-16 items-center justify-center rounded-xl bg-surface-container-highest">
+            <Crown className="h-8 w-8 text-[#b87333]" />
+          </div>
+          <h3 className="font-headline font-bold text-on-surface">ROOKIE</h3>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">
+            Main Game: {primaryGame || "Not Set"}
+          </p>
+          <div className="mt-3 w-full space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+              <span>Elite Booster XP</span>
+              <span>0%</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
+              <div className="primary-gradient h-full w-[0%]"></div>
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-300">
+              0 / 10000 XP
+            </p>
+          </div>
+        </div>
+
+        <nav className="font-label flex grow flex-col gap-2 p-4 text-sm font-semibold tracking-wide">
+          {boosterNavLinks.map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80"
+            >
+              {renderNavIcon(item.icon, "h-5 w-5")}
+              <span>{item.label}</span>
+            </a>
+          ))}
+        </nav>
+
+        <div className="font-label flex flex-col gap-2 border-t border-white/5 p-4 text-sm font-semibold">
+          <a href="#" className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80">
+            <HelpCircle className="h-5 w-5" />
+            <span>Support</span>
+          </a>
+        </div>
+      </aside>
+      ) : null}
+
+      <main className={`min-h-screen px-6 pb-24 pt-24 ${isLoggedInBooster ? "ml-64" : ""}`}>
+        <div className="mx-auto max-w-5xl">
+          <div
+            className={`mb-6 rounded-lg border px-4 py-3 text-xs font-bold uppercase tracking-wider ${
+              isDeactivated
+                ? "border-error/30 bg-error/10 text-error"
+                : "border-primary/20 bg-primary/10 text-primary"
+            }`}
+          >
+            {uiMessage}
+          </div>
+
+          <section className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <div className="max-w-2xl">
+              <span className="font-label mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                System Configuration
+              </span>
+              <h1 className="font-headline text-5xl font-extrabold leading-none tracking-tighter text-on-surface md:text-6xl">
+                BOOSTER{" "}
+                <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  PROFILE
+                </span>
+              </h1>
+              <p className="mt-4 max-w-lg text-lg font-light leading-relaxed text-on-surface-variant">
+                Manage your identity and availability.
+              </p>
+            </div>
+
+            <div className="ghost-border min-w-[280px] rounded-xl bg-surface-container-high p-6 shadow-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="font-label text-xs uppercase tracking-widest text-on-surface-variant">
+                  Availability
+                </span>
+                <div
+                  className={`h-2 w-2 rounded-full ${isOnline ? "animate-pulse bg-primary" : "bg-outline"}`}
+                ></div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-headline text-xl font-bold text-on-surface">
+                    {isOnline ? "Online Now" : "Offline"}
+                  </p>
+                  <p className="text-xs text-on-surface-variant">
+                    {isOnline ? "Visible to all clients" : "Hidden from all clients"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-pressed={isOnline}
+                  onClick={handleToggleOnline}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    isOnline ? "bg-primary-container" : "bg-outline-variant"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full transition ${
+                      isOnline
+                        ? "translate-x-6 bg-on-primary-fixed"
+                        : "translate-x-1 bg-on-surface-variant"
+                    }`}
+                  ></span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="ghost-border mb-6 flex flex-col items-center gap-8 rounded-xl bg-surface-container-low p-8 md:flex-row">
+            <div className="group relative">
+              <div className="h-32 w-32 overflow-hidden rounded-2xl border-2 border-primary/30 shadow-[0_0_30px_rgba(143,245,255,0.1)]">
+                <img
+                  alt="Large Profile Avatar"
+                  className="h-full w-full object-cover"
+                  src={avatarUrl}
+                />
+              </div>
+              <div className="absolute -bottom-2 -right-2 rounded-lg border border-primary/20 bg-background p-1.5 shadow-xl">
+                <Edit3 className="h-4 w-4 text-primary" />
+              </div>
+            </div>
+            <div className="grow">
+              <h2 className="font-headline mb-2 text-2xl font-bold text-on-surface">AVATAR</h2>
+              <p className="mb-6 max-w-md text-sm text-on-surface-variant">
+                Update your profile image. Recommended resolution: 512x512px. JPG or PNG format
+                only.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <button
+                  type="button"
+                  onClick={handleAvatarUpload}
+                  className="primary-gradient font-label rounded-md px-6 py-2.5 text-xs font-extrabold uppercase tracking-wider text-on-primary-fixed transition-transform active:scale-95"
+                >
+                  UPLOAD Avatar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAvatarRemove}
+                  className="font-label rounded-md border border-white/10 bg-white/5 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-on-surface-variant transition-all hover:bg-white/10"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
+            <div className="ghost-border rounded-xl bg-surface-container-low p-8 md:col-span-7">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="rounded-lg bg-primary/10 p-3">
+                  <UserCircle className="h-5 w-5 text-primary" />
+                </div>
+                <h2 className="font-headline text-2xl font-bold">Identity Details</h2>
+              </div>
+
+              <form className="space-y-6" onSubmit={handleCredentialsUpdate}>
+                <div className="space-y-2">
+                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Booster ID
+                  </label>
+                  <input
+                    className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
+                    placeholder="foreign111"
+                    type="text"
+                    defaultValue=""
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Email Address
+                  </label>
+                  <input
+                    className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
+                    placeholder="medalihiza@gmail.com"
+                    type="email"
+                    defaultValue=""
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Country of Origin
+                  </label>
+                  <div className="ghost-border flex items-center gap-2 rounded-sm bg-surface-container-lowest px-3 py-2">
+                    <input
+                      className="w-full border-none bg-transparent p-0 text-sm text-on-surface focus:ring-0"
+                      type="text"
+                      value={countryOfOrigin}
+                      readOnly
+                    />
+                    <button
+                      type="button"
+                      onClick={handleOpenCountryPicker}
+                      className="rounded border border-cyan-400/40 bg-cyan-400/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition-colors hover:bg-cyan-400/25"
+                    >
+                      Pick
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Bio Description
+                  </label>
+                  <textarea
+                    className="ghost-border min-h-[120px] w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
+                    placeholder="Write about your professional experience, playstyle, and achievements..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Languages Spoken
+                  </label>
+                  <div className="ghost-border flex w-full flex-wrap gap-2 rounded-sm bg-surface-container-lowest px-3 py-2 text-on-surface transition-all focus-within:ring-1 focus-within:ring-primary">
+                    {languages.map((name) => (
+                      <div
+                        key={name}
+                        className="flex items-center gap-1.5 rounded border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary"
+                      >
+                        {name}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveLanguage(name)}
+                          className="cursor-pointer text-primary/80 hover:text-white"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <input
+                      className="min-w-[80px] flex-grow border-none bg-transparent p-0 text-sm text-on-surface-variant focus:ring-0"
+                      placeholder="Use Pick to add language"
+                      type="text"
+                      readOnly
+                    />
+                    <button
+                      type="button"
+                      onClick={handleOpenLanguagePicker}
+                      className="rounded border border-cyan-400/40 bg-cyan-400/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition-colors hover:bg-cyan-400/25"
+                    >
+                      Pick
+                    </button>
+                  </div>
+                </div>
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    className="primary-gradient font-label rounded-md px-8 py-3 text-sm font-extrabold uppercase tracking-wider text-on-primary-fixed shadow-[0_0_20px_rgba(143,245,255,0.2)] transition-transform active:scale-95"
+                  >
+                    Update Credentials
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div className="ghost-border rounded-xl bg-surface-container-low p-8 md:col-span-5">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="rounded-lg bg-tertiary/10 p-3">
+                  <Gamepad2 className="h-5 w-5 text-tertiary" />
+                </div>
+                <h2 className="font-headline text-2xl font-bold">Service Expertise</h2>
+              </div>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Primary Game
+                  </label>
+                  <select
+                    className="ghost-border h-10 w-full cursor-pointer appearance-none rounded-sm border-none bg-surface-container-lowest px-4 text-xs font-bold text-on-surface transition-all focus:ring-1 focus:ring-tertiary"
+                    value={primaryGame}
+                    onChange={(event) => setPrimaryGame(event.target.value)}
+                  >
+                    <option value="" disabled>
+                      Select primary game
+                    </option>
+                    <option>Valorant</option>
+                    <option>Apex Legends</option>
+                    <option>League of Legends</option>
+                    <option>Counter-Strike 2</option>
+                    <option>Dota 2</option>
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Active GAMES &amp; Ranks
+                  </label>
+                  <div className="flex flex-col gap-4">
+                    {activeGames.map((game) => (
+                      <div key={game.id} className="space-y-2">
+                        <div className="ghost-border flex items-center gap-2 rounded-lg bg-surface-container-lowest p-2">
+                          <div className="min-w-[120px] rounded-md border border-tertiary/30 bg-tertiary/20 px-3 py-1.5 text-xs font-bold text-tertiary">
+                            {game.name}
+                          </div>
+                          <div className="flex flex-grow justify-end">
+                            <select
+                              className="rank-select h-10 min-w-[130px] cursor-pointer rounded border border-primary/30 bg-primary/20 px-3 py-0 text-xs font-black uppercase tracking-tighter text-primary"
+                              value={game.rank}
+                              onChange={(event) => handleGameRankChange(game.id, event.target.value)}
+                            >
+                              {gameRanks[game.name].map((rank) => (
+                                <option key={`${game.id}-${rank}`} className="bg-background text-on-surface">
+                                  {rank}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCloseGame(game.id)}
+                            className="cursor-pointer px-1 text-on-surface-variant transition-colors hover:text-error"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <input
+                          className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest/50 px-3 py-2 text-[10px] italic text-on-surface-variant transition-all focus:ring-1 focus:ring-tertiary"
+                          placeholder="Add in-game ID"
+                          type="text"
+                          value={game.accountId}
+                          onChange={(event) => handleGameAccountIdChange(game.id, event.target.value)}
+                        />
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={handleOpenGamePicker}
+                      className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-md border border-white/5 bg-surface-container-highest px-3 py-2.5 text-xs font-bold text-on-surface-variant transition-colors hover:bg-white/10"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Game
+                    </button>
+
+                    {availableGames.length === 0 ? (
+                      <div className="ghost-border rounded-lg bg-surface-container-lowest/70 px-3 py-2 text-[10px] uppercase tracking-wider text-on-surface-variant">
+                        All supported games already added
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveExpertise}
+                    className="w-full rounded-md border border-tertiary/20 bg-transparent px-6 py-3 font-label text-xs font-bold uppercase tracking-widest text-tertiary transition-all hover:border-tertiary hover:bg-tertiary/5"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="ghost-border rounded-xl bg-surface-container-low p-8 md:col-span-12 lg:col-span-6">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="rounded-lg bg-cyan-400/10 p-3">
+                  <Share2 className="h-5 w-5 text-cyan-400" />
+                </div>
+                <h2 className="font-headline text-2xl font-bold">Socials</h2>
+              </div>
+              <div className="space-y-4">
+                {socialLinks.map((social) => (
+                  <div
+                    key={social.id}
+                    className="ghost-border flex items-center gap-4 rounded-lg bg-surface-container-lowest p-3"
+                  >
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-md text-[10px] font-black uppercase tracking-wider ${getSocialAccentClasses(
+                        social.platform
+                      )}`}
+                    >
+                      {social.platform.slice(0, 2)}
+                    </div>
+                    <div className="flex-grow">
+                      <label className="mb-1 block text-[10px] font-bold uppercase text-on-surface-variant">
+                        {social.platform}
+                      </label>
+                      <input
+                        className="w-full border-none bg-transparent p-0 text-sm text-on-surface focus:ring-0"
+                        placeholder="Profile username or URL"
+                        type="text"
+                        value={social.username}
+                        onChange={(event) =>
+                          handleSocialUsernameChange(social.id, event.target.value)
+                        }
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSocialLink(social.id)}
+                      className="rounded p-1 text-on-surface-variant transition-colors hover:bg-white/10 hover:text-error"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={handleOpenSocialPicker}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-white/5 bg-surface-container-highest px-3 py-2.5 text-xs font-bold text-on-surface-variant transition-colors hover:bg-white/10"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Connection
+                </button>
+
+                {availableSocialPlatforms.length === 0 ? (
+                  <div className="ghost-border rounded-lg bg-surface-container-lowest/70 px-3 py-2 text-[10px] uppercase tracking-wider text-on-surface-variant">
+                    All supported platforms already linked
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="ghost-border rounded-xl bg-surface-container-high p-8 md:col-span-12 lg:col-span-6">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="rounded-lg bg-secondary/10 p-3">
+                  <Lock className="h-5 w-5 text-secondary" />
+                </div>
+                <h2 className="font-headline text-2xl font-bold">Security</h2>
+              </div>
+              <div className="space-y-4">
+                <p className="mb-6 text-sm leading-relaxed text-on-surface-variant">
+                  Ensure your account remains fortified with a rotating high-entropy password.
+                </p>
+                <div className="space-y-4">
+                  <input
+                    className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-secondary"
+                    placeholder="Current Password"
+                    type="password"
+                    value={passwordFields.current}
+                    onChange={(event) =>
+                      setPasswordFields((current) => ({ ...current, current: event.target.value }))
+                    }
+                  />
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <input
+                      className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-secondary"
+                      placeholder="New Password"
+                      type="password"
+                      value={passwordFields.next}
+                      onChange={(event) =>
+                        setPasswordFields((current) => ({ ...current, next: event.target.value }))
+                      }
+                    />
+                    <input
+                      className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-secondary"
+                      placeholder="Confirm New Password"
+                      type="password"
+                      value={passwordFields.confirm}
+                      onChange={(event) =>
+                        setPasswordFields((current) => ({ ...current, confirm: event.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleChangePassword}
+                  className="mt-4 w-full rounded-md border border-secondary/20 bg-transparent px-6 py-3 font-label text-xs font-bold uppercase tracking-widest text-secondary transition-all hover:border-secondary hover:bg-secondary/5"
+                >
+                  Change Password
+                </button>
+              </div>
+            </div>
+
+            <div className="ghost-border rounded-xl bg-surface-container p-8 md:col-span-12">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="rounded-lg bg-primary/10 p-3">
+                  <Shield className="h-5 w-5 text-primary" />
+                </div>
+                <h2 className="font-headline text-2xl font-bold">Session Integrity</h2>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                <div className="flex flex-col gap-2">
+                  <span className="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                    Last Login
+                  </span>
+                  <div className="flex items-center gap-2 text-on-surface">
+                    <History className="h-4 w-4 text-tertiary" />
+                    <p className="font-mono text-[10px] leading-tight">
+                      2024.05.22
+                      <br />
+                      14:32:01 GMT
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <span className="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                    Active Units
+                  </span>
+                  <div className="flex items-center gap-2 text-on-surface">
+                    <MonitorSmartphone className="h-4 w-4 text-primary" />
+                    <p className="font-headline text-sm font-bold uppercase">2 Systems</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <span className="font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                    2FA Protocol
+                  </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <UserRoundCheck className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-bold uppercase text-primary">Active</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 flex items-center justify-between border-t border-white/5 pt-6">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                  Global Terminal Security: Optimal
+                </p>
+                <button
+                  type="button"
+                  onClick={handleToggleLog}
+                  className="text-[10px] font-bold uppercase tracking-tighter text-primary hover:text-primary-container"
+                >
+                  {isLogOpen ? "Hide Log History <" : "View Log History >"}
+                </button>
+              </div>
+
+              {isLogOpen ? (
+                <div className="mt-4 rounded-md border border-white/5 bg-surface-container-lowest/70 p-3 text-[10px] uppercase tracking-wider text-on-surface-variant">
+                  14:32:01 GMT - secure login accepted | 14:40:12 GMT - password policy sync |
+                  15:04:51 GMT - session token renewed
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <section className="mt-12 border-t border-white/5 pt-12">
+            <div className="ghost-border flex flex-col items-center justify-between gap-6 rounded-xl bg-error-container/10 p-8 md:flex-row">
+              <div>
+                <h3 className="font-headline text-xl font-bold text-error">Deactivate Terminal</h3>
+                <p className="mt-1 text-sm text-on-surface-variant">
+                  Permanently remove your access and clear all tactical data from Zenith servers.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleTerminateAccount}
+                className="rounded-md border border-error/20 bg-error/10 px-6 py-3 font-label text-xs font-black uppercase tracking-widest text-error transition-all hover:bg-error/20"
+              >
+                {isDeactivated ? "Reactivate Account" : "Terminate Account"}
+              </button>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <div
+        className={`fixed inset-0 z-[60] ${
+          isGamePickerOpen ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setIsGamePickerOpen(false)}
+          aria-label="Close game picker overlay"
+          className={`absolute inset-0 bg-black/60 transition-opacity ${
+            isGamePickerOpen ? "opacity-100" : "opacity-0"
+          }`}
+        ></button>
+
+        <aside
+          className={`absolute right-0 top-0 h-full w-full max-w-md border-l border-white/10 bg-surface-container px-6 py-8 shadow-2xl transition-transform duration-300 ${
+            isGamePickerOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="font-headline text-2xl font-bold text-on-surface">Add Supported Game</h3>
+            <button
+              type="button"
+              onClick={() => setIsGamePickerOpen(false)}
+              className="rounded-md border border-white/10 p-1 text-on-surface-variant transition-colors hover:text-on-surface"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {availableGames.length > 0 ? (
+            <>
+              <div className="mb-6 space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                  Choose Game
+                </p>
+                <div className="grid grid-cols-1 gap-2">
+                  {availableGames.map((game) => (
+                    <button
+                      key={game}
+                      type="button"
+                      onClick={() => handleGameSelectionChange(game)}
+                      className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
+                        gameToAdd === game
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
+                      }`}
+                    >
+                      {game}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-8 space-y-2">
+                <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  Choose Rank
+                </label>
+                <select
+                  className="rank-select h-10 w-full cursor-pointer rounded border border-primary/30 bg-primary/20 px-3 py-0 text-xs font-black uppercase tracking-tighter text-primary"
+                  value={rankToAdd}
+                  onChange={(event) => setRankToAdd(event.target.value)}
+                >
+                  {(gameRanks[gameToAdd] ?? []).map((rank) => (
+                    <option key={`${gameToAdd}-${rank}`} className="bg-background text-on-surface">
+                      {rank}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsGamePickerOpen(false)}
+                  className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddGameFromPicker}
+                  className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
+                >
+                  Add Game
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="ghost-border rounded-lg bg-surface-container-low p-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+              No more supported games available to add.
+            </div>
+          )}
+        </aside>
+      </div>
+
+      <div
+        className={`fixed inset-0 z-[65] ${
+          isLanguagePickerOpen ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setIsLanguagePickerOpen(false)}
+          aria-label="Close language picker overlay"
+          className={`absolute inset-0 bg-black/60 transition-opacity ${
+            isLanguagePickerOpen ? "opacity-100" : "opacity-0"
+          }`}
+        ></button>
+
+        <aside
+          className={`absolute right-0 top-0 h-full w-full max-w-md border-l border-white/10 bg-surface-container px-6 py-8 shadow-2xl transition-transform duration-300 ${
+            isLanguagePickerOpen ? "translate-x-0" : "translate-x-full"
+          } flex flex-col`}
+        >
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="font-headline text-2xl font-bold text-on-surface">Add Language</h3>
+            <button
+              type="button"
+              onClick={() => setIsLanguagePickerOpen(false)}
+              className="rounded-md border border-white/10 p-1 text-on-surface-variant transition-colors hover:text-on-surface"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {availableLanguages.length > 0 ? (
+            <>
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className="mb-2 space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                    Top 20 Used Languages
+                  </p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {availableLanguages.map((language) => (
+                      <button
+                        key={language}
+                        type="button"
+                        onClick={() => setLanguageToAdd(language)}
+                        className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
+                          languageToAdd === language
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
+                        }`}
+                      >
+                        {language}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsLanguagePickerOpen(false)}
+                  className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddLanguageFromPicker}
+                  className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
+                >
+                  Add Language
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="ghost-border rounded-lg bg-surface-container-low p-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+              All supported languages already added.
+            </div>
+          )}
+        </aside>
+      </div>
+
+      <div
+        className={`fixed inset-0 z-[66] ${
+          isSocialPickerOpen ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setIsSocialPickerOpen(false)}
+          aria-label="Close social picker overlay"
+          className={`absolute inset-0 bg-black/60 transition-opacity ${
+            isSocialPickerOpen ? "opacity-100" : "opacity-0"
+          }`}
+        ></button>
+
+        <aside
+          className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-surface-container px-6 py-8 shadow-2xl transition-transform duration-300 ${
+            isSocialPickerOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="font-headline text-2xl font-bold text-on-surface">Link Platform</h3>
+            <button
+              type="button"
+              onClick={() => setIsSocialPickerOpen(false)}
+              className="rounded-md border border-white/10 p-1 text-on-surface-variant transition-colors hover:text-on-surface"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {availableSocialPlatforms.length > 0 ? (
+            <>
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                    Supported Platforms
+                  </p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {availableSocialPlatforms.map((platform) => (
+                      <button
+                        key={platform}
+                        type="button"
+                        onClick={() => setSocialPlatformToAdd(platform)}
+                        className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
+                          socialPlatformToAdd === platform
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
+                        }`}
+                      >
+                        {platform}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="space-y-2 pt-4">
+                    <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      Profile Username / Link
+                    </label>
+                    <input
+                      className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-sm text-on-surface transition-all focus:ring-1 focus:ring-primary"
+                      placeholder="example: @YourHandle or profile URL"
+                      type="text"
+                      value={socialUsernameToAdd}
+                      onChange={(event) => setSocialUsernameToAdd(event.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsSocialPickerOpen(false)}
+                  className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddSocialFromPicker}
+                  className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
+                >
+                  Link Profile
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="ghost-border rounded-lg bg-surface-container-low p-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+              All supported platforms are already linked.
+            </div>
+          )}
+        </aside>
+      </div>
+
+      <div
+        className={`fixed inset-0 z-[67] ${
+          isCountryPickerOpen ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setIsCountryPickerOpen(false)}
+          aria-label="Close country picker overlay"
+          className={`absolute inset-0 bg-black/60 transition-opacity ${
+            isCountryPickerOpen ? "opacity-100" : "opacity-0"
+          }`}
+        ></button>
+
+        <aside
+          className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-surface-container px-6 py-8 shadow-2xl transition-transform duration-300 ${
+            isCountryPickerOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="font-headline text-2xl font-bold text-on-surface">Country of Origin</h3>
+            <button
+              type="button"
+              onClick={() => setIsCountryPickerOpen(false)}
+              className="rounded-md border border-white/10 p-1 text-on-surface-variant transition-colors hover:text-on-surface"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 gap-2">
+              {supportedCountries.map((country) => (
+                <button
+                  key={country}
+                  type="button"
+                  onClick={() => setCountryToSet(country)}
+                  className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
+                    countryToSet === country
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
+                  }`}
+                >
+                  {country}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsCountryPickerOpen(false)}
+              className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSetCountryFromPicker}
+              className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
+            >
+              Set Country
+            </button>
+          </div>
+        </aside>
+      </div>
+    </>
+  );
+}
