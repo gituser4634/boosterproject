@@ -59,7 +59,7 @@ export default function BoosterDashboardPage() {
 
     return (
       <a
-        href="#"
+        href={label === "Payments" ? "/booster-payments" : "#"}
         className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80"
       >
         {icon}
@@ -176,6 +176,14 @@ export default function BoosterDashboardPage() {
                     <button
                       key={item}
                       type="button"
+                      onClick={() => {
+                        if (item === "Settings") {
+                          window.location.href = "/booster-profile";
+                          return;
+                        }
+
+                        setIsProfileMenuOpen(false);
+                      }}
                       className={`w-full rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-colors ${
                         item === "Logout"
                           ? "text-red-400 hover:bg-red-500/10 hover:text-red-300"

@@ -161,7 +161,7 @@ export default function BoosterProfilePage() {
   const boosterNavLinks = [
     { icon: "dashboard", label: "Dashboard", href: "#" },
     { icon: "assignment", label: "Requests", href: "#" },
-    { icon: "payments", label: "Payments", href: "#" },
+    { icon: "payments", label: "Payments", href: "/booster-payments" },
     { icon: "forum", label: "Chats", href: "#" },
   ];
 
@@ -218,6 +218,11 @@ export default function BoosterProfilePage() {
   };
 
   const handleProfileAction = (action: string) => {
+    if (action === "Settings") {
+      window.location.href = "/booster-profile";
+      return;
+    }
+
     setIsProfileMenuOpen(false);
     showStatus(`${action} clicked.`);
   };
