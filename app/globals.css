@@ -27,6 +27,19 @@
   outline: 0.5px solid rgba(69, 72, 79, 0.15);
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #22262f;
+  border-radius: 10px;
+}
+
 .primary-gradient {
   background: linear-gradient(135deg, #8ff5ff 0%, #00eefc 100%);
 }
@@ -328,6 +341,34 @@ textarea {
   transition: color 180ms ease, transform 180ms ease, filter 180ms ease;
 }
 
+@keyframes routeFadeSlideIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.998);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.route-transition-wrap {
+  min-height: 100vh;
+  will-change: opacity, transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.route-transition-enter {
+  animation: routeFadeSlideIn 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-transition-enter {
+    animation: none;
+  }
+}
+
 .top-panel-icon:hover {
   color: #8ff5ff;
   transform: translateY(-1px);
@@ -458,4 +499,17 @@ textarea {
   will-change: transform, opacity;
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+@keyframes typingDots {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
 }

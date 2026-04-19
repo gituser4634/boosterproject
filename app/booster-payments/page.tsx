@@ -33,6 +33,7 @@ export default function BoosterPaymentsPage() {
   const [isNotificationsOn, setIsNotificationsOn] = useState(true);
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isSidebarOnline, setIsSidebarOnline] = useState(true);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(2);
   const [searchTerm, setSearchTerm] = useState("");
   const [availableBalance] = useState(0);
@@ -94,7 +95,13 @@ export default function BoosterPaymentsPage() {
 
     return (
       <a
-        href={label === "Dashboard" ? "/booster-dashboard" : "#"}
+        href={
+          label === "Dashboard"
+            ? "/booster-dashboard"
+            : label === "Requests"
+              ? "/booster-requests"
+              : "/booster-chats"
+        }
         className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80"
       >
         {icon}
@@ -241,7 +248,7 @@ export default function BoosterPaymentsPage() {
         </div>
       </header>
 
-      <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col bg-slate-900 pt-20 shadow-2xl shadow-black">
+      <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r border-white/15 bg-[#04060a]/95 pt-20 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_24px_60px_rgba(0,0,0,0.6)] backdrop-blur-md">
         <div className="mb-4 flex flex-col items-center border-b border-white/5 px-6 py-4">
           <div className="ghost-border mb-2 flex h-16 w-16 items-center justify-center rounded-xl bg-surface-container-highest">
             <Crown className="h-8 w-8 text-[#b87333]" />
@@ -271,6 +278,26 @@ export default function BoosterPaymentsPage() {
 
         <div className="px-4 pb-5">
           <div className="mb-4 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+          <div className="mb-3 flex items-center justify-between rounded-md border border-white/10 bg-surface-container-high/60 px-2.5 py-2">
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${isSidebarOnline ? "bg-emerald-400" : "bg-slate-500"}`}></span>
+              <span className="text-[11px] font-semibold text-on-surface-variant">{isSidebarOnline ? "Online" : "Offline"}</span>
+            </div>
+            <button
+              type="button"
+              aria-pressed={isSidebarOnline}
+              onClick={() => setIsSidebarOnline((current) => !current)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                isSidebarOnline ? "bg-cyan-400/70" : "bg-outline-variant"
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full transition ${
+                  isSidebarOnline ? "translate-x-5 bg-slate-950" : "translate-x-1 bg-on-surface-variant"
+                }`}
+              ></span>
+            </button>
+          </div>
           <button
             type="button"
             className="mb-4 w-full rounded-md bg-gradient-to-r from-primary to-primary-container py-3 text-xs font-bold uppercase tracking-widest text-on-primary-fixed transition-all hover:brightness-110 active:scale-95"

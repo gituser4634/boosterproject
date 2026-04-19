@@ -161,9 +161,9 @@ export default function BoosterProfilePage() {
 
   const boosterNavLinks = [
     { icon: "dashboard", label: "Dashboard", href: "#" },
-    { icon: "assignment", label: "Requests", href: "#" },
+    { icon: "assignment", label: "Requests", href: "/booster-requests" },
     { icon: "payments", label: "Payments", href: "/booster-payments" },
-    { icon: "forum", label: "Chats", href: "#" },
+    { icon: "forum", label: "Chats", href: "/booster-chats" },
   ];
 
   const renderNavIcon = (icon: string, className: string) => {
@@ -635,7 +635,7 @@ export default function BoosterProfilePage() {
       </header>
 
       {isLoggedInBooster ? (
-      <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col bg-slate-900 pt-20 shadow-2xl shadow-black">
+      <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r border-white/15 bg-[#04060a]/95 pt-20 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_24px_60px_rgba(0,0,0,0.6)] backdrop-blur-md">
         <div className="mb-4 flex flex-col items-center border-b border-white/5 px-6 py-4">
           <div className="ghost-border mb-2 flex h-16 w-16 items-center justify-center rounded-xl bg-surface-container-highest">
             <Crown className="h-8 w-8 text-[#b87333]" />
@@ -672,6 +672,26 @@ export default function BoosterProfilePage() {
         </nav>
 
         <div className="font-label flex flex-col gap-2 border-t border-white/5 p-4 text-sm font-semibold">
+          <div className="mb-3 flex items-center justify-between rounded-md border border-white/10 bg-surface-container-high/60 px-2.5 py-2">
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-400" : "bg-slate-500"}`}></span>
+              <span className="text-[11px] font-semibold text-on-surface-variant">{isOnline ? "Online" : "Offline"}</span>
+            </div>
+            <button
+              type="button"
+              aria-pressed={isOnline}
+              onClick={handleToggleOnline}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                isOnline ? "bg-cyan-400/70" : "bg-outline-variant"
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full transition ${
+                  isOnline ? "translate-x-5 bg-slate-950" : "translate-x-1 bg-on-surface-variant"
+                }`}
+              ></span>
+            </button>
+          </div>
           <a href="#" className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80">
             <HelpCircle className="h-5 w-5" />
             <span>Support</span>

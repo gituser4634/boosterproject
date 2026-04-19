@@ -629,6 +629,10 @@ export default function StitchDesignPage() {
                 If you&apos;re new here,
                 <button
                   type="button"
+                  onClick={() => {
+                    setIsLoginOpen(false);
+                    openRegisterModal(loginType);
+                  }}
                   className="ml-1 font-semibold uppercase tracking-wider text-primary transition-colors hover:text-primary-fixed"
                 >
                   Register
