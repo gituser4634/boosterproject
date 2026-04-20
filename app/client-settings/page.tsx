@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Textarea } from "@/components/ui/textarea";
 import { FileInput } from "@/components/ui/file-input";
 import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
@@ -228,15 +229,15 @@ export default function ClientSettingsPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
                 <Label>Current Password</Label>
-                <Input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+                <PasswordInput value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
               </div>
               <div>
                 <Label>New Password</Label>
-                <Input type="password" value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} />
+                <PasswordInput value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} />
               </div>
               <div>
                 <Label>Confirm New Password</Label>
-                <Input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+                <PasswordInput value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
               </div>
             </div>
 

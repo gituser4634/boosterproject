@@ -171,7 +171,8 @@ export default function StitchDesignPage() {
       return result;
     }
 
-    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
+    router.replace(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
+    router.refresh();
     return { ok: true };
   };
 
@@ -188,7 +189,8 @@ export default function StitchDesignPage() {
       return result;
     }
 
-    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
+    router.replace(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
+    router.refresh();
     return { ok: true };
   };
 
@@ -592,7 +594,6 @@ export default function StitchDesignPage() {
           setIsLoginOpen(false);
           openRegisterModal(loginType);
         }}
-        panelClassName="modal-panel-enter ghost-border w-full max-w-lg transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
       />
 
       <AuthRegisterModal
@@ -602,13 +603,11 @@ export default function StitchDesignPage() {
         onRegisterTypeChange={setRegisterType}
         onSubmit={handleRegisterSubmit}
         onOpenTerms={() => setIsTermsOpen(true)}
-        panelClassName="modal-panel-enter ghost-border w-full max-w-2xl transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
       />
 
       <TermsModal
         open={isTermsOpen}
         onOpenChange={setIsTermsOpen}
-        panelClassName="ghost-border w-full max-w-3xl transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
       />
     </>
   );

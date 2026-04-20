@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useBoosterAvatar } from "@/lib/use-booster-avatar";
@@ -971,29 +972,26 @@ export default function BoosterProfilePage() {
                   Ensure your account remains fortified with a rotating high-entropy password.
                 </p>
                 <div className="space-y-4">
-                  <Input
+                  <PasswordInput
                     className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-secondary"
                     placeholder="Current Password"
-                    type="password"
                     value={passwordFields.current}
                     onChange={(event) =>
                       setPasswordFields((current) => ({ ...current, current: event.target.value }))
                     }
                   />
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Input
+                    <PasswordInput
                       className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-secondary"
                       placeholder="New Password"
-                      type="password"
                       value={passwordFields.next}
                       onChange={(event) =>
                         setPasswordFields((current) => ({ ...current, next: event.target.value }))
                       }
                     />
-                    <Input
+                    <PasswordInput
                       className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-secondary"
                       placeholder="Confirm New Password"
-                      type="password"
                       value={passwordFields.confirm}
                       onChange={(event) =>
                         setPasswordFields((current) => ({ ...current, confirm: event.target.value }))

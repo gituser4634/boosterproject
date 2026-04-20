@@ -19,6 +19,10 @@ const buttonVariants = cva(
           "border border-outline/30 bg-surface-container-high/70 text-on-surface hover:border-primary/45 hover:text-primary",
         ghost: "text-on-surface-variant hover:bg-surface-variant/60 hover:text-on-surface",
         tab: "text-on-surface-variant data-[state=active]:primary-gradient data-[state=active]:text-on-primary-fixed",
+        menu:
+          "w-full justify-start rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-on-surface-variant hover:bg-white/10 hover:text-on-surface",
+        menuDanger:
+          "w-full justify-start rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/10 hover:text-red-300",
       },
       size: {
         sm: "h-9 px-4 py-2",

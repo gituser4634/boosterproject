@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Bell, BellOff } from "lucide-react";
 
+import { ProfileAvatarButton } from "@/components/booster/profile-avatar-button";
 import { Button } from "@/components/ui/button";
 
 type NotificationItem = {
@@ -144,16 +145,12 @@ function BoosterTopBar({
         </div>
 
         <div className="relative z-[56]">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
+          <ProfileAvatarButton
+            avatarUrl={avatarUrl}
+            alt={avatarAlt}
             onClick={onToggleProfileMenu}
-            className={`h-8 w-8 overflow-hidden rounded-full border p-0 hover:bg-transparent ${avatarBorderClassName}`}
-            aria-label="Open profile menu"
-          >
-            <img alt={avatarAlt} className="h-full w-full object-cover" src={avatarUrl} />
-          </Button>
+            className={avatarBorderClassName}
+          />
 
           {isProfileMenuOpen ? (
             <>
@@ -171,11 +168,7 @@ function BoosterTopBar({
                     key={action}
                     type="button"
                     onClick={() => onProfileAction(action)}
-                    className={`w-full rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-colors ${
-                      action === "Logout"
-                        ? "text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                        : "text-on-surface-variant hover:bg-white/10 hover:text-on-surface"
-                    }`}
+                    variant={action === "Logout" ? "menuDanger" : "menu"}
                   >
                     {action}
                   </Button>

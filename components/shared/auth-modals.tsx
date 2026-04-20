@@ -2,11 +2,19 @@ import { useState } from "react";
 import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogOverlay } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogOverlay, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 type UserType = "booster" | "client";
+
+const basePanelClassName =
+  "ghost-border w-full transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]";
+
+const loginPanelClassName = `modal-panel-enter ${basePanelClassName} max-w-lg`;
+const registerPanelClassName = `modal-panel-enter ${basePanelClassName} max-w-2xl`;
+const termsPanelClassName = `${basePanelClassName} max-w-3xl`;
 
 type LoginModalProps = {
   open: boolean;
@@ -27,7 +35,7 @@ export function AuthLoginModal({
   onSubmit,
   onSwitchToRegister,
   overlayClassName = "modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-black/65 px-4",
-  panelClassName = "modal-panel-enter ghost-border w-full max-w-lg rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]",
+  panelClassName = loginPanelClassName,
 }: LoginModalProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,6 +70,8 @@ export function AuthLoginModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogOverlay className={overlayClassName} />
       <DialogContent className={`!left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 ${panelClassName}`}>
+        <DialogTitle className="sr-only">Welcome Back</DialogTitle>
+        <DialogDescription className="sr-only">Sign in as a booster or client to continue.</DialogDescription>
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h3 className="font-headline text-3xl font-bold tracking-tight text-primary-fixed">Welcome Back</h3>
@@ -105,8 +115,7 @@ export function AuthLoginModal({
 
           <div>
             <Label>Password</Label>
-            <Input
-              type="password"
+            <PasswordInput
               placeholder="Enter your password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -173,7 +182,7 @@ export function AuthRegisterModal({
   onRegisterTypeChange,
   onSubmit,
   onOpenTerms,
-  panelClassName = "modal-panel-enter ghost-border w-full max-w-2xl rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]",
+  panelClassName = registerPanelClassName,
 }: RegisterModalProps) {
   const [alias, setAlias] = useState("");
   const [username, setUsername] = useState("");
@@ -233,6 +242,14 @@ export function AuthRegisterModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogOverlay className="fixed inset-0 z-[85] flex items-center justify-center bg-black/65 px-4 py-6" />
       <DialogContent className={`!left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 ${panelClassName}`}>
+        <DialogTitle className="sr-only">
+          {registerType === "booster" ? "Booster Inscription Form" : "Client Registration Form"}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {registerType === "booster"
+            ? "Fill your details to request a booster account."
+            : "Create your client account to hire top-rated boosters."}
+        </DialogDescription>
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h3 className="font-headline text-3xl font-bold tracking-tight text-primary-fixed">
@@ -294,13 +311,16 @@ export function AuthRegisterModal({
 
           <div>
             <Label>Password</Label>
-            <Input type="password" placeholder="Create password" value={password} onChange={(event) => setPassword(event.target.value)} />
+            <PasswordInput
+              placeholder="Create password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
           </div>
 
           <div>
             <Label>Confirm Password</Label>
-            <Input
-              type="password"
+            <PasswordInput
               placeholder="Confirm password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
@@ -359,12 +379,16 @@ type TermsModalProps = {
 export function TermsModal({
   open,
   onOpenChange,
-  panelClassName = "ghost-border w-full max-w-3xl rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]",
+  panelClassName = termsPanelClassName,
 }: TermsModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogOverlay className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 px-4 py-6" />
       <DialogContent className={panelClassName}>
+        <DialogTitle className="sr-only">Terms and Conditions</DialogTitle>
+        <DialogDescription className="sr-only">
+          Please read before accepting booster inscription.
+        </DialogDescription>
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 className="font-headline text-3xl font-bold tracking-tight text-primary-fixed">Terms and Conditions</h3>

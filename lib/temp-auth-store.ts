@@ -69,6 +69,7 @@ const getGlobalStore = () => {
 };
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
+const normalizeUsername = (username: string) => username.trim().toLowerCase();
 
 const hashPassword = (password: string) => {
   return createHash("sha256").update(`${PASSWORD_SALT}:${password}`).digest("hex");
@@ -129,9 +130,16 @@ export const tempAuth = {
   }) {
     const store = getGlobalStore();
     const normalizedEmail = normalizeEmail(input.email);
+    const normalizedUsername = normalizeUsername(input.username);
 
     if (store.usersByEmail.has(normalizedEmail)) {
       return { ok: false as const, error: "Email already registered." };
+    }
+
+    for (const existingUser of store.usersByEmail.values()) {
+      if (normalizeUsername(existingUser.username) === normalizedUsername) {
+        return { ok: false as const, error: "Username already taken." };
+      }
     }
 
     const user: TempAuthUserRecord = {

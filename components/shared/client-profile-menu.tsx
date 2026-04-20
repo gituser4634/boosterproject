@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ProfileAvatarButton } from "@/components/booster/profile-avatar-button";
 import { Button } from "@/components/ui/button";
 import { tempAuthLogout } from "@/lib/temp-auth-client";
 
@@ -21,16 +22,11 @@ export function ClientProfileMenu({ avatarUrl, alt = "Client profile avatar" }: 
 
   return (
     <div className="relative z-[56]">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
+      <ProfileAvatarButton
+        avatarUrl={avatarUrl}
+        alt={alt}
         onClick={() => setIsOpen((current) => !current)}
-        className="h-8 w-8 overflow-hidden rounded-full border border-primary/20 p-0 hover:bg-transparent"
-        aria-label="Open profile menu"
-      >
-        <img alt={alt} className="h-full w-full object-cover" src={avatarUrl} />
-      </Button>
+      />
 
       {isOpen ? (
         <>
@@ -49,7 +45,7 @@ export function ClientProfileMenu({ avatarUrl, alt = "Client profile avatar" }: 
                 setIsOpen(false);
                 router.push("/client-settings");
               }}
-              className="w-full rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-on-surface-variant transition-colors hover:bg-white/10 hover:text-on-surface"
+              variant="menu"
             >
               Settings
             </Button>
@@ -59,14 +55,14 @@ export function ClientProfileMenu({ avatarUrl, alt = "Client profile avatar" }: 
                 setIsOpen(false);
                 router.push("/client-orders");
               }}
-              className="w-full rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-on-surface-variant transition-colors hover:bg-white/10 hover:text-on-surface"
+              variant="menu"
             >
               My Orders
             </Button>
             <Button
               type="button"
               onClick={handleLogout}
-              className="w-full rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+              variant="menuDanger"
             >
               Logout
             </Button>
