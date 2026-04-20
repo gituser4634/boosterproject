@@ -250,6 +250,11 @@ export default function BoosterDashboardPage() {
             return;
           }
 
+          if (action === "Logout") {
+            router.push("/");
+            return;
+          }
+
           setIsProfileMenuOpen(false);
         }}
       />

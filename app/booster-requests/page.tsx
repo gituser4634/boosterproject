@@ -282,6 +282,11 @@ export default function BoosterRequestsPage() {
             return;
           }
 
+          if (action === "Logout") {
+            router.push("/");
+            return;
+          }
+
           setIsProfileMenuOpen(false);
         }}
       />

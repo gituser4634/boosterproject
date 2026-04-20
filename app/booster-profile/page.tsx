@@ -166,6 +166,11 @@ export default function BoosterProfilePage() {
       return;
     }
 
+    if (action === "Logout") {
+      router.push("/");
+      return;
+    }
+
     setIsProfileMenuOpen(false);
     showStatus(`${action} clicked.`);
   };

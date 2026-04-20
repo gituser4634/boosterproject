@@ -416,6 +416,11 @@ function BoosterChatsPageContent() {
             return;
           }
 
+          if (action === "Logout") {
+            router.push("/");
+            return;
+          }
+
           setIsProfileMenuOpen(false);
         }}
       />
