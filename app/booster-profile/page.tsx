@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AtSign,
   ClipboardList,
@@ -29,10 +29,12 @@ import { BoosterSidebar } from "@/components/booster/shell-navigation";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
 import { PickerSheet } from "@/components/booster/picker-sheet";
 import { Button } from "@/components/ui/button";
+import { FileInput } from "@/components/ui/file-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useBoosterAvatar } from "@/lib/use-booster-avatar";
 import {
   defaultAvatar,
   gameRanks,
@@ -63,7 +65,7 @@ export default function BoosterProfilePage() {
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(2);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState(defaultAvatar);
+  const { avatarUrl, setBoosterAvatarUrl, resetBoosterAvatarUrl } = useBoosterAvatar(defaultAvatar);
   const [uiMessage, setUiMessage] = useState("Ready");
   const [languages, setLanguages] = useState<string[]>([]);
   const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
@@ -85,6 +87,9 @@ export default function BoosterProfilePage() {
   const [savedPrimaryGame, setSavedPrimaryGame] = useState("");
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [isDeactivated, setIsDeactivated] = useState(false);
+  const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [draftAvatarUrl, setDraftAvatarUrl] = useState(avatarUrl);
+  const [hasPendingAvatarChange, setHasPendingAvatarChange] = useState(false);
   const isLoggedInBooster = true;
   const [passwordFields, setPasswordFields] = useState({
     current: "",
@@ -171,14 +176,7 @@ export default function BoosterProfilePage() {
       return;
     }
 
-    const nextUrl = window.prompt("Paste avatar image URL", avatarUrl);
-    if (!nextUrl) {
-      showStatus("Avatar update canceled.");
-      return;
-    }
-
-    setAvatarUrl(nextUrl);
-    showStatus("Avatar updated successfully.");
+    avatarFileInputRef.current?.click();
   };
 
   const handleAvatarRemove = () => {
@@ -187,9 +185,92 @@ export default function BoosterProfilePage() {
       return;
     }
 
-    setAvatarUrl(defaultAvatar);
-    showStatus("Avatar reset to default.");
+    setDraftAvatarUrl(defaultAvatar);
+    setHasPendingAvatarChange(defaultAvatar !== avatarUrl);
+    showStatus("Avatar reset in preview. Apply settings to save.");
   };
+
+  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Avatar cannot be changed.");
+      event.target.value = "";
+      return;
+    }
+
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) {
+      showStatus("Avatar update canceled.");
+      return;
+    }
+
+    if (!selectedFile.type.startsWith("image/")) {
+      showStatus("Please choose a valid image file.");
+      event.target.value = "";
+      return;
+    }
+
+    const maxFileSizeInBytes = 1024 * 1024;
+    if (selectedFile.size > maxFileSizeInBytes) {
+      showStatus("Image must be 1MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (!result) {
+        showStatus("Failed to read image file.");
+        return;
+      }
+
+      setDraftAvatarUrl(result);
+      setHasPendingAvatarChange(result !== avatarUrl);
+      showStatus("Avatar updated in preview. Apply settings to save.");
+    };
+    reader.onerror = () => {
+      showStatus("Failed to read image file.");
+    };
+    reader.readAsDataURL(selectedFile);
+    event.target.value = "";
+  };
+
+  const handleApplyAvatarSettings = () => {
+    if (isDeactivated) {
+      showStatus("Account is deactivated. Avatar cannot be changed.");
+      return;
+    }
+
+    if (!hasPendingAvatarChange) {
+      showStatus("No avatar changes to apply.");
+      return;
+    }
+
+    if (draftAvatarUrl === defaultAvatar) {
+      const isReset = resetBoosterAvatarUrl();
+      if (!isReset) {
+        showStatus("Avatar update failed. Please try again.");
+        return;
+      }
+      setHasPendingAvatarChange(false);
+      showStatus("Avatar reset to default.");
+      return;
+    }
+
+    const isSaved = setBoosterAvatarUrl(draftAvatarUrl);
+    if (!isSaved) {
+      showStatus("Avatar update failed. Please try a smaller image.");
+      return;
+    }
+
+    setHasPendingAvatarChange(false);
+    showStatus("Avatar updated successfully.");
+  };
+
+  useEffect(() => {
+    setDraftAvatarUrl(avatarUrl);
+    setHasPendingAvatarChange(false);
+  }, [avatarUrl]);
 
   const handleOpenLanguagePicker = () => {
     if (isDeactivated) {
@@ -555,7 +636,7 @@ export default function BoosterProfilePage() {
                 <img
                   alt="Large Profile Avatar"
                   className="h-full w-full object-cover"
-                  src={avatarUrl}
+                  src={draftAvatarUrl}
                 />
               </div>
               <div className="absolute -bottom-2 -right-2 rounded-lg border border-primary/20 bg-background p-1.5 shadow-xl">
@@ -568,6 +649,9 @@ export default function BoosterProfilePage() {
                 Update your profile image. Recommended resolution: 512x512px. JPG or PNG format
                 only.
               </p>
+              <p className="mb-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+                Avatar changes apply only after clicking Apply.
+              </p>
               <div className="flex flex-wrap gap-4">
                 <Button
                   type="button"
@@ -576,12 +660,26 @@ export default function BoosterProfilePage() {
                 >
                   UPLOAD Avatar
                 </Button>
+                <FileInput
+                  ref={avatarFileInputRef}
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleAvatarFileChange}
+                  className="hidden"
+                />
                 <Button
                   type="button"
                   onClick={handleAvatarRemove}
                   className="font-label rounded-md border border-white/10 bg-white/5 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-on-surface-variant transition-all hover:bg-white/10"
                 >
                   Remove
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleApplyAvatarSettings}
+                  disabled={!hasPendingAvatarChange}
+                  className="font-label rounded-md border border-primary/30 bg-primary/10 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-primary transition-all hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Apply
                 </Button>
               </div>
             </div>

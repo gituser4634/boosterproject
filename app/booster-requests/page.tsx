@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { BoosterSidebar } from "@/components/booster/shell-navigation";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
+import { useBoosterAvatar } from "@/lib/use-booster-avatar";
 
 type RequestType = "Boost Request" | "Coaching" | "Play Together";
 
@@ -138,6 +139,7 @@ export default function BoosterRequestsPage() {
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(2);
+  const { avatarUrl } = useBoosterAvatar("/booster-pfps/default-avatar.svg");
 
   const inspectedRequest = useMemo(
     () => requestCards.find((item) => item.id === inspectingRequestId) ?? null,
@@ -253,7 +255,7 @@ export default function BoosterRequestsPage() {
   return (
     <>
       <BoosterTopBar
-        avatarUrl="/booster-pfps/my-pfp.png"
+        avatarUrl={avatarUrl}
         isNotificationsOn={isNotificationsOn}
         unreadNotificationCount={unreadNotificationCount}
         isNotificationsPanelOpen={isNotificationsPanelOpen}

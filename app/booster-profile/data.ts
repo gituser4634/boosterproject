@@ -1,4 +1,4 @@
-export const defaultAvatar = "/booster-pfps/my-pfp.png";
+export const defaultAvatar = "/booster-pfps/default-avatar.svg";
 
 export const supportedLanguages = [
   "English",

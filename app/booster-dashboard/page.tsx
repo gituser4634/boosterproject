@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { BoosterSidebar } from "@/components/booster/shell-navigation";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
+import { useBoosterAvatar } from "@/lib/use-booster-avatar";
 
 type IncomingRequest = {
   id: string;
@@ -107,7 +108,7 @@ export default function BoosterDashboardPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData>(emptyDashboardData);
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
 
-  const avatarUrl = "/booster-pfps/my-pfp.png";
+  const { avatarUrl } = useBoosterAvatar("/booster-pfps/default-avatar.svg");
   const notifications: NotificationItem[] = [
     { id: "queue", title: "2 new requests entered queue", meta: "Queue • Just now" },
     { id: "payment", title: "Payment cleared for Order #88204", meta: "Finance • 2h ago" },

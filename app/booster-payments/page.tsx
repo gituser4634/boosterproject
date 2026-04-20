@@ -17,6 +17,7 @@ import { BoosterMobileNav, BoosterSidebar } from "@/components/booster/shell-nav
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
+import { useBoosterAvatar } from "@/lib/use-booster-avatar";
 
 type OrderRow = {
   id: string;
@@ -44,7 +45,7 @@ export default function BoosterPaymentsPage() {
   const [weeklyRevenue] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
   const [completedOrders] = useState<OrderRow[]>([]);
 
-  const avatarUrl = "/booster-pfps/my-pfp.png";
+  const { avatarUrl } = useBoosterAvatar("/booster-pfps/default-avatar.svg");
   const notifications: NotificationItem[] = [
     { id: "payout", title: "2 payout confirmations pending", meta: "Finance • Just now" },
     { id: "report", title: "Weekly earnings report is ready", meta: "Reports • 2h ago" },
@@ -72,6 +73,76 @@ export default function BoosterPaymentsPage() {
 
   const handleMarkNotificationsRead = () => {
     setUnreadNotificationCount(0);
+  };
+
+  const csvEscape = (value: string | number) => {
+    const raw = String(value);
+    if (raw.includes(",") || raw.includes("\n") || raw.includes('"')) {
+      return `"${raw.replace(/"/g, '""')}"`;
+    }
+
+    return raw;
+  };
+
+  const handleDownloadReport = () => {
+    const generatedAt = new Date();
+    const generatedAtIso = generatedAt.toISOString();
+    const dateStamp = generatedAtIso.slice(0, 10);
+
+    const summaryRows = [
+      ["Metric", "Value"],
+      ["Generated At", generatedAtIso],
+      ["Tax Period", taxPeriodLabel],
+      ["Available Balance", availableBalance],
+      ["Balance Change Percent", balanceChangePercent],
+      ["Pending Payouts", pendingPayouts],
+      ["Settlement Hours", settlementHours],
+      ["Total Taxable", totalTaxable],
+      ["Completed Orders Count", completedOrders.length],
+    ];
+
+    const weeklyRows = [
+      ["Day", "Revenue"],
+      ...weekDays.map((day, index) => [day, weeklyRevenue[index] ?? 0]),
+    ];
+
+    const ordersRows = [
+      ["Order ID", "Date", "Service Type", "Commission", "Net Amount", "Status"],
+      ...completedOrders.map((order) => [
+        order.id,
+        order.date,
+        order.service,
+        order.commission,
+        order.netAmount,
+        "Completed",
+      ]),
+    ];
+
+    const allRows = [
+      ["Payments Report"],
+      [],
+      ...summaryRows,
+      [],
+      ["Weekly Revenue"],
+      ...weeklyRows,
+      [],
+      ["Completed Orders"],
+      ...ordersRows,
+    ];
+
+    const csvContent = allRows
+      .map((row) => row.map((cell) => csvEscape(cell)).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `payments-report-${dateStamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
   };
 
   return (
@@ -127,6 +198,7 @@ export default function BoosterPaymentsPage() {
             <div className="flex gap-3">
               <Button
                 type="button"
+                onClick={handleDownloadReport}
                 className="ghost-border rounded-md bg-surface-container-high/70 px-6 py-3 text-sm font-bold uppercase tracking-widest text-secondary transition-all hover:bg-secondary/10 active:scale-95"
               >
                 Download Report

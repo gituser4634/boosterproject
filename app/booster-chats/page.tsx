@@ -19,6 +19,7 @@ import { BoosterTopBar } from "@/components/booster/top-bar";
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
 import { Input } from "@/components/ui/input";
+import { useBoosterAvatar } from "@/lib/use-booster-avatar";
 
 type TabType = "chats" | "requests";
 type MessageType = "text" | "image" | "voice";
@@ -185,7 +186,7 @@ function BoosterChatsPageContent() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [voiceCounter, setVoiceCounter] = useState(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const avatarUrl = "/booster-pfps/my-pfp.png";
+  const { avatarUrl } = useBoosterAvatar("/booster-pfps/default-avatar.svg");
 
   const activeList = tab === "chats" ? threads : requestThreads;
 
@@ -697,7 +698,7 @@ function BoosterChatsPageContent() {
         </div>
       </main>
 
-      <BoosterMobileNav active="chats" />
+      <BoosterMobileNav active="chats" avatarUrl={avatarUrl} />
     </>
   );
 }
