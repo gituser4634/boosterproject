@@ -1,16 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Gamepad2, Rocket, ShieldCheck, Swords, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthLoginModal } from "@/components/shared/auth-modals";
+import { tempAuthLogin } from "@/lib/temp-auth-client";
 
 const particleIcons = [Gamepad2, Trophy, Swords, Rocket, ShieldCheck, Gamepad2, Trophy, Rocket];
 
 export default function LiveBoostsComingSoonPage() {
+  const router = useRouter();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginType, setLoginType] = useState<"booster" | "client">("booster");
+
+  const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
+    const result = await tempAuthLogin(payload);
+    if (!result.ok) {
+      return result;
+    }
+
+    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
+    return { ok: true };
+  };
 
   return (
     <>
@@ -134,6 +147,7 @@ export default function LiveBoostsComingSoonPage() {
         onOpenChange={setIsLoginOpen}
         loginType={loginType}
         onLoginTypeChange={setLoginType}
+        onSubmit={handleLoginSubmit}
         overlayClassName="modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-background/65 px-4 backdrop-blur-md"
         panelClassName="modal-panel-enter ghost-border w-full max-w-lg rounded-2xl border border-outline/30 bg-surface-container/85 p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl"
       />

@@ -16,6 +16,7 @@ import {
 import { BoosterSidebar } from "@/components/booster/shell-navigation";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
 import { useBoosterAvatar } from "@/lib/use-booster-avatar";
+import { tempAuthLogout } from "@/lib/temp-auth-client";
 
 type RequestType = "Boost Request" | "Coaching" | "Play Together";
 
@@ -276,13 +277,14 @@ export default function BoosterRequestsPage() {
           setIsProfileMenuOpen((current) => !current);
         }}
         onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
-        onProfileAction={(action) => {
+        onProfileAction={async (action) => {
           if (action === "Settings") {
             router.push("/booster-profile");
             return;
           }
 
           if (action === "Logout") {
+            await tempAuthLogout();
             router.push("/");
             return;
           }

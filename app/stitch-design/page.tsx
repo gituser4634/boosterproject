@@ -21,11 +21,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
 import { AuthLoginModal, AuthRegisterModal, TermsModal } from "@/components/shared/auth-modals";
 import { buildBrowseSearchUrl } from "@/lib/search-url";
+import { tempAuthLogin, tempAuthRegister } from "@/lib/temp-auth-client";
+import { useTempAuthSession } from "@/lib/use-temp-auth-session";
 
 export default function StitchDesignPage() {
   const router = useRouter();
+  const { user } = useTempAuthSession();
+  const isClientLoggedIn = user?.role === "client";
   const navItems = ["Services", "Games", "About"];
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginType, setLoginType] = useState<"booster" | "client">("booster");
@@ -160,6 +165,33 @@ export default function StitchDesignPage() {
     setIsSearchOpen(false);
   };
 
+  const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
+    const result = await tempAuthLogin(payload);
+    if (!result.ok) {
+      return result;
+    }
+
+    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
+    return { ok: true };
+  };
+
+  const handleRegisterSubmit = async (payload: {
+    username: string;
+    email: string;
+    country: string;
+    password: string;
+    role: "booster" | "client";
+    alias?: string;
+  }) => {
+    const result = await tempAuthRegister(payload);
+    if (!result.ok) {
+      return result;
+    }
+
+    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
+    return { ok: true };
+  };
+
   return (
     <>
       <header className="ghost-border fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface-variant/70 backdrop-blur-xl">
@@ -276,15 +308,19 @@ export default function StitchDesignPage() {
                 </>
               ) : null}
             </div>
-            <Button
-              type="button"
-              onClick={() => setIsLoginOpen(true)}
-              className="top-panel-link px-2 py-2"
-              variant="ghost"
-              size="sm"
-            >
-              Login
-            </Button>
+            {isClientLoggedIn ? (
+              <ClientProfileMenu avatarUrl={user.avatarUrl} />
+            ) : (
+              <Button
+                type="button"
+                onClick={() => setIsLoginOpen(true)}
+                className="top-panel-link px-2 py-2"
+                variant="ghost"
+                size="sm"
+              >
+                Login
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -551,6 +587,7 @@ export default function StitchDesignPage() {
         onOpenChange={setIsLoginOpen}
         loginType={loginType}
         onLoginTypeChange={setLoginType}
+        onSubmit={handleLoginSubmit}
         onSwitchToRegister={() => {
           setIsLoginOpen(false);
           openRegisterModal(loginType);
@@ -563,6 +600,7 @@ export default function StitchDesignPage() {
         onOpenChange={setIsRegisterOpen}
         registerType={registerType}
         onRegisterTypeChange={setRegisterType}
+        onSubmit={handleRegisterSubmit}
         onOpenTerms={() => setIsTermsOpen(true)}
         panelClassName="modal-panel-enter ghost-border w-full max-w-2xl transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
       />

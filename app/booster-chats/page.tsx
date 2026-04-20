@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
 import { Input } from "@/components/ui/input";
 import { useBoosterAvatar } from "@/lib/use-booster-avatar";
+import { tempAuthLogout } from "@/lib/temp-auth-client";
 
 type TabType = "chats" | "requests";
 type MessageType = "text" | "image" | "voice";
@@ -410,13 +411,14 @@ function BoosterChatsPageContent() {
           setIsProfileMenuOpen((current) => !current);
         }}
         onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
-        onProfileAction={(action) => {
+        onProfileAction={async (action) => {
           if (action === "Settings") {
             router.push("/booster-profile");
             return;
           }
 
           if (action === "Logout") {
+            await tempAuthLogout();
             router.push("/");
             return;
           }

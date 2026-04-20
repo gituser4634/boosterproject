@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BadgeCheck, Search, Sparkles, Star, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
 import { AuthLoginModal } from "@/components/shared/auth-modals";
+import { tempAuthLogin } from "@/lib/temp-auth-client";
+import { useTempAuthSession } from "@/lib/use-temp-auth-session";
 
 type Booster = {
   id: string;
@@ -294,6 +297,9 @@ function generateBoosterRoster(total: number, reservedNames: string[]): Booster[
 }
 
 function BoosterBrowsePageContent() {
+  const router = useRouter();
+  const { user } = useTempAuthSession();
+  const isClientLoggedIn = user?.role === "client";
   const searchParams = useSearchParams();
   const [selectedGame, setSelectedGame] = useState("all");
   const [selectedRank, setSelectedRank] = useState("all");
@@ -308,6 +314,16 @@ function BoosterBrowsePageContent() {
   useEffect(() => {
     setSearchText(searchParams.get("q") ?? "");
   }, [searchParams]);
+
+  const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
+    const result = await tempAuthLogin(payload);
+    if (!result.ok) {
+      return result;
+    }
+
+    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
+    return { ok: true };
+  };
 
   const boosters = useMemo(() => {
     const generated = generateBoosterRoster(32, DEFAULT_BOOSTERS.map((booster) => booster.name));
@@ -414,15 +430,19 @@ function BoosterBrowsePageContent() {
                 className="h-5 w-5 opacity-90"
               />
             </a>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsLoginOpen(true)}
-              className="top-panel-link px-2 py-2"
-            >
-              Login
-            </Button>
+            {isClientLoggedIn ? (
+              <ClientProfileMenu avatarUrl={user.avatarUrl} />
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsLoginOpen(true)}
+                className="top-panel-link px-2 py-2"
+              >
+                Login
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -572,6 +592,7 @@ function BoosterBrowsePageContent() {
         onOpenChange={setIsLoginOpen}
         loginType={loginType}
         onLoginTypeChange={setLoginType}
+        onSubmit={handleLoginSubmit}
         overlayClassName="modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-background/65 px-4 backdrop-blur-md"
         panelClassName="modal-panel-enter ghost-border w-full max-w-lg rounded-2xl border border-outline/30 bg-surface-container/85 p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl"
       />

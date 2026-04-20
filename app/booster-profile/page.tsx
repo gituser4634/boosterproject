@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useBoosterAvatar } from "@/lib/use-booster-avatar";
+import { tempAuthLogout } from "@/lib/temp-auth-client";
 import {
   defaultAvatar,
   gameRanks,
@@ -160,13 +161,14 @@ export default function BoosterProfilePage() {
     showStatus("Notifications marked as read.");
   };
 
-  const handleProfileAction = (action: string) => {
+  const handleProfileAction = async (action: string) => {
     if (action === "Settings") {
       router.push("/booster-profile");
       return;
     }
 
     if (action === "Logout") {
+      await tempAuthLogout();
       router.push("/");
       return;
     }

@@ -1,16 +1,46 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AuthLoginModal, AuthRegisterModal, TermsModal } from "@/components/shared/auth-modals";
+import { tempAuthLogin, tempAuthRegister } from "@/lib/temp-auth-client";
 
 export default function LevelUpPage() {
+  const router = useRouter();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [loginType, setLoginType] = useState<"booster" | "client">("client");
   const [registerType, setRegisterType] = useState<"booster" | "client">("client");
+
+  const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
+    const result = await tempAuthLogin(payload);
+    if (!result.ok) {
+      return result;
+    }
+
+    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
+    return { ok: true };
+  };
+
+  const handleRegisterSubmit = async (payload: {
+    username: string;
+    email: string;
+    country: string;
+    password: string;
+    role: "booster" | "client";
+    alias?: string;
+  }) => {
+    const result = await tempAuthRegister(payload);
+    if (!result.ok) {
+      return result;
+    }
+
+    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
+    return { ok: true };
+  };
 
   return (
     <>
@@ -98,6 +128,7 @@ export default function LevelUpPage() {
         onOpenChange={setIsLoginOpen}
         loginType={loginType}
         onLoginTypeChange={setLoginType}
+        onSubmit={handleLoginSubmit}
         onSwitchToRegister={() => {
           setIsLoginOpen(false);
           setIsRegisterOpen(true);
@@ -109,6 +140,7 @@ export default function LevelUpPage() {
         onOpenChange={setIsRegisterOpen}
         registerType={registerType}
         onRegisterTypeChange={setRegisterType}
+        onSubmit={handleRegisterSubmit}
         onOpenTerms={() => setIsTermsOpen(true)}
       />
 
