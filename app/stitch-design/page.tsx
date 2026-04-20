@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   ArrowRight,
@@ -15,10 +16,16 @@ import {
   Star,
   Swords,
   Trophy,
-  X,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { AuthLoginModal, AuthRegisterModal, TermsModal } from "@/components/shared/auth-modals";
+import { buildBrowseSearchUrl } from "@/lib/search-url";
 
 export default function StitchDesignPage() {
+  const router = useRouter();
   const navItems = ["Services", "Games", "About"];
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginType, setLoginType] = useState<"booster" | "client">("booster");
@@ -149,8 +156,7 @@ export default function StitchDesignPage() {
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const scopedQuery = encodeURIComponent(searchQuery.trim());
-    window.location.href = `/booster-browse?scope=${searchScope}&q=${scopedQuery}`;
+    router.push(buildBrowseSearchUrl(searchScope, searchQuery));
     setIsSearchOpen(false);
   };
 
@@ -211,31 +217,33 @@ export default function StitchDesignPage() {
               />
             </a>
             <div className="relative z-[70]">
-              <button
+              <Button
                 type="button"
                 aria-label="Search"
                 onClick={() => setIsSearchOpen((current) => !current)}
-                className="top-panel-icon"
+                className="top-panel-icon h-9 w-9"
+                variant="ghost"
+                size="icon"
               >
                 <Search size={18} />
-              </button>
+              </Button>
 
               {isSearchOpen ? (
                 <>
-                  <button
+                  <Button
                     type="button"
                     aria-label="Close search panel"
                     onClick={() => setIsSearchOpen(false)}
                     className="fixed inset-0 z-[69] cursor-default"
-                  ></button>
+                    variant="ghost"
+                    size="icon"
+                  ></Button>
                   <form
                     onSubmit={handleSearchSubmit}
                     className="ghost-border absolute right-0 top-12 z-[70] w-[340px] rounded-xl border border-white/10 bg-surface-container/95 p-4 shadow-2xl"
                   >
-                    <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-                      Search In
-                    </label>
-                    <select
+                    <Label className="text-[10px] tracking-[0.2em]">Search In</Label>
+                    <Select
                       value={searchScope}
                       onChange={(event) =>
                         setSearchScope(event.target.value as "all" | "clients" | "boosters")
@@ -245,36 +253,38 @@ export default function StitchDesignPage() {
                       <option value="all">All</option>
                       <option value="clients">Clients</option>
                       <option value="boosters">Boosters</option>
-                    </select>
+                    </Select>
 
-                    <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-                      Search Query
-                    </label>
-                    <input
+                    <Label className="text-[10px] tracking-[0.2em]">Search Query</Label>
+                    <Input
                       type="text"
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
                       placeholder="Type a name, game, or rank..."
-                      className="mb-4 w-full rounded-md border border-outline/30 bg-surface-container-high px-3 py-2 text-sm text-on-surface outline-none transition focus:border-primary"
+                      className="mb-4 border-outline/30 bg-surface-container-high px-3 py-2"
                     />
 
-                    <button
+                    <Button
                       type="submit"
-                      className="cta-flame-soft cta-flame-soft-primary primary-gradient w-full rounded-md px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-on-primary-fixed"
+                      className="cta-flame-soft cta-flame-soft-primary w-full"
+                      variant="primary"
+                      size="sm"
                     >
                       Search
-                    </button>
+                    </Button>
                   </form>
                 </>
               ) : null}
             </div>
-            <button
+            <Button
               type="button"
               onClick={() => setIsLoginOpen(true)}
-              className="top-panel-link px-2 py-2 text-sm font-bold uppercase tracking-wide"
+              className="top-panel-link px-2 py-2"
+              variant="ghost"
+              size="sm"
             >
               Login
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -500,16 +510,18 @@ export default function StitchDesignPage() {
                 rank define your skill ceiling.
               </p>
               <div className="flex flex-col items-center justify-center gap-6 md:flex-row">
-                <button
+                <Button
                   type="button"
                   onClick={() => openRegisterModal("booster")}
-                  className="cta-flame-soft cta-flame-soft-primary primary-gradient w-full rounded-md px-12 py-5 text-xl font-bold text-on-primary-fixed transition-transform hover:scale-105 active:scale-95 md:w-auto"
+                  className="cta-flame-soft cta-flame-soft-primary w-full text-xl transition-transform hover:scale-105 active:scale-95 md:w-auto"
+                  variant="primary"
+                  size="lg"
                 >
                   BECOME A BOOSTER
-                </button>
-                <button className="cta-flame-soft cta-flame-soft-outline w-full rounded-md border border-outline/30 px-12 py-5 text-xl font-bold transition-all hover:bg-surface-variant md:w-auto">
+                </Button>
+                <Button className="cta-flame-soft cta-flame-soft-outline w-full border-outline/30 text-xl hover:bg-surface-variant md:w-auto" variant="outline" size="lg">
                   HIRE A BOOSTER
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -534,343 +546,32 @@ export default function StitchDesignPage() {
         </div>
       </footer>
 
-      {isLoginOpen ? (
-        <div
-          className="modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-black/65 px-4"
-          onClick={() => setIsLoginOpen(false)}
-        >
-          <div
-            className="modal-panel-enter ghost-border w-full max-w-lg transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="font-headline text-3xl font-bold tracking-tight text-primary-fixed">
-                  Welcome Back
-                </h3>
-                <p className="mt-2 text-sm text-on-surface-variant">
-                  Sign in as a booster or client to continue.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsLoginOpen(false)}
-                className="rounded-md p-2 text-on-surface-variant transition-colors hover:bg-surface-variant/50 hover:text-on-surface"
-                aria-label="Close login modal"
-              >
-                  <X size={18} />
-              </button>
-            </div>
+      <AuthLoginModal
+        open={isLoginOpen}
+        onOpenChange={setIsLoginOpen}
+        loginType={loginType}
+        onLoginTypeChange={setLoginType}
+        onSwitchToRegister={() => {
+          setIsLoginOpen(false);
+          openRegisterModal(loginType);
+        }}
+        panelClassName="modal-panel-enter ghost-border w-full max-w-lg transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
+      />
 
-            <div className="mb-6 grid grid-cols-2 gap-2 rounded-lg bg-surface-dim p-1">
-              <button
-                type="button"
-                onClick={() => setLoginType("booster")}
-                className={`rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
-                  loginType === "booster"
-                    ? "primary-gradient text-on-primary-fixed"
-                    : "text-on-surface-variant hover:bg-surface-variant/60"
-                }`}
-              >
-                Booster Login
-              </button>
-              <button
-                type="button"
-                onClick={() => setLoginType("client")}
-                className={`rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
-                  loginType === "client"
-                    ? "primary-gradient text-on-primary-fixed"
-                    : "text-on-surface-variant hover:bg-surface-variant/60"
-                }`}
-              >
-                Client Login
-              </button>
-            </div>
+      <AuthRegisterModal
+        open={isRegisterOpen}
+        onOpenChange={setIsRegisterOpen}
+        registerType={registerType}
+        onRegisterTypeChange={setRegisterType}
+        onOpenTerms={() => setIsTermsOpen(true)}
+        panelClassName="modal-panel-enter ghost-border w-full max-w-2xl transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
+      />
 
-            <form className="space-y-4">
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  {loginType === "booster" ? "Booster Email" : "Client Email"}
-                </label>
-                <input
-                  type="email"
-                  placeholder={loginType === "booster" ? "booster@email.com" : "client@email.com"}
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="Enter your password"
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <button
-                type="button"
-                className="primary-gradient mt-2 w-full rounded-md px-5 py-3 font-bold uppercase tracking-wide text-on-primary-fixed"
-              >
-                {loginType === "booster" ? "Login as Booster" : "Login as Client"}
-              </button>
-            </form>
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <button
-                type="button"
-                className="font-semibold uppercase tracking-wider text-secondary transition-colors hover:text-primary"
-              >
-                Forgot password?
-              </button>
-              <div className="text-on-surface-variant">
-                If you&apos;re new here,
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsLoginOpen(false);
-                    openRegisterModal(loginType);
-                  }}
-                  className="ml-1 font-semibold uppercase tracking-wider text-primary transition-colors hover:text-primary-fixed"
-                >
-                  Register
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {isRegisterOpen ? (
-        <div
-          className="fixed inset-0 z-[85] flex items-center justify-center bg-black/65 px-4 py-6"
-          onClick={() => setIsRegisterOpen(false)}
-        >
-          <div
-            className="ghost-border w-full max-w-2xl transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="font-headline text-3xl font-bold tracking-tight text-primary-fixed">
-                  {registerType === "booster" ? "Booster Inscription Form" : "Client Registration Form"}
-                </h3>
-                <p className="mt-2 text-sm text-on-surface-variant">
-                  {registerType === "booster"
-                    ? "Fill your details to request a booster account."
-                    : "Create your client account to hire top-rated boosters."}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRegisterOpen(false)}
-                className="rounded-md p-2 text-on-surface-variant transition-colors hover:bg-surface-variant/50 hover:text-on-surface"
-                aria-label="Close registration form"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="mb-6 grid grid-cols-2 gap-2 rounded-lg bg-surface-dim p-1">
-              <button
-                type="button"
-                onClick={() => setRegisterType("booster")}
-                className={`rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
-                  registerType === "booster"
-                    ? "primary-gradient text-on-primary-fixed shadow-[0_8px_30px_-10px_rgba(20,214,255,0.6)]"
-                    : "text-on-surface-variant hover:bg-surface-variant/60"
-                }`}
-              >
-                Booster Register
-              </button>
-              <button
-                type="button"
-                onClick={() => setRegisterType("client")}
-                className={`rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
-                  registerType === "client"
-                    ? "primary-gradient text-on-primary-fixed shadow-[0_8px_30px_-10px_rgba(20,214,255,0.6)]"
-                    : "text-on-surface-variant hover:bg-surface-variant/60"
-                }`}
-              >
-                Client Register
-              </button>
-            </div>
-
-            <form className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {registerType === "booster" ? (
-                <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                    Alias
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Your alias"
-                    className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                  />
-                </div>
-              ) : null}
-
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  placeholder="Your username"
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="you@email.com"
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Country Of Origin
-                </label>
-                <input
-                  type="text"
-                  placeholder="Country"
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="Create password"
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="Confirm password"
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <div className="rounded-md border border-outline/20 bg-surface-dim/50 px-4 py-3 text-sm text-on-surface-variant">
-                  <label className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-outline/40 bg-transparent accent-primary"
-                    />
-                    <span>
-                      I accept the
-                      <button
-                        type="button"
-                        onClick={() => setIsTermsOpen(true)}
-                        className="mx-1 inline-block font-bold text-primary underline decoration-primary/70 underline-offset-4 transition-colors hover:text-primary-fixed"
-                      >
-                        Terms and Conditions
-                      </button>
-                      and confirm that my registration information is accurate.
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="mt-2 md:col-span-2">
-                <button
-                  type="button"
-                  className="primary-gradient w-full rounded-md px-5 py-3 font-bold uppercase tracking-wide text-on-primary-fixed"
-                >
-                  {registerType === "booster"
-                    ? "Submit Booster Registration"
-                    : "Create Client Account"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
-      {isTermsOpen ? (
-        <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 px-4 py-6"
-          onClick={() => setIsTermsOpen(false)}
-        >
-          <div
-            className="ghost-border w-full max-w-3xl transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h3 className="font-headline text-3xl font-bold tracking-tight text-primary-fixed">
-                  Terms and Conditions
-                </h3>
-                <p className="mt-1 text-sm text-on-surface-variant">
-                  Please read before accepting booster inscription.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsTermsOpen(false)}
-                className="rounded-md p-2 text-on-surface-variant transition-colors hover:bg-surface-variant/50 hover:text-on-surface"
-                aria-label="Close terms and conditions"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="max-h-[60vh] space-y-4 overflow-y-auto rounded-md border border-outline/20 bg-surface-dim/40 p-4 text-sm leading-relaxed text-on-surface-variant">
-              <p>
-                By submitting this form, you agree to provide true and accurate information. Any
-                false information may result in refusal or suspension of your booster account.
-              </p>
-              <p>
-                You are responsible for the security of your login credentials. Do not share your
-                password with anyone and report suspicious activity immediately.
-              </p>
-              <p>
-                Booster performance and conduct must follow platform standards, including respectful
-                behavior, fair play, and compliance with game publisher policies.
-              </p>
-              <p>
-                Payments, commissions, and account status are managed under platform rules and may
-                be adjusted in case of abuse, fraud, or violation of these terms.
-              </p>
-              <p>
-                Personal data is processed for account operations, fraud prevention, and service
-                quality. By continuing, you acknowledge our data handling practices.
-              </p>
-              <p>
-                Continued use of the platform means you accept updates to these terms when legally
-                required, with notice provided through official channels.
-              </p>
-            </div>
-
-            <div className="mt-5 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setIsTermsOpen(false)}
-                className="primary-gradient rounded-md px-6 py-2 font-bold uppercase tracking-wide text-on-primary-fixed"
-              >
-                I Understand
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <TermsModal
+        open={isTermsOpen}
+        onOpenChange={setIsTermsOpen}
+        panelClassName="ghost-border w-full max-w-3xl transform-gpu rounded-2xl border border-outline/30 bg-surface-container p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.75)]"
+      />
     </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   BellOff,
@@ -21,6 +22,8 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { BoosterSidebar } from "@/components/booster/shell-navigation";
+import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
 
 type IncomingRequest = {
   id: string;
@@ -95,6 +98,7 @@ const emptyDashboardData: DashboardData = {
 };
 
 export default function BoosterDashboardPage() {
+  const router = useRouter();
   const [isNotificationsOn, setIsNotificationsOn] = useState(true);
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -103,8 +107,11 @@ export default function BoosterDashboardPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData>(emptyDashboardData);
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
 
-  const avatarUrl =
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuAdPvZ00eTgt70SgYkjTmjjzzW9n8XgL15UzLfkJfpyEtg0n8vFZMy3TzkoMRMcAf_2HI-I0SAp6WatY17ORBf8hPJUIafXDl7KDOEflUaqqIyNNggu0JGc3cCXzbCHDZkIzWSrnnqThHV_VVDnZ0i0ifmmAxmidMAEH7t7YOJseNObfJ8KxiptfpefBM9daOfLBjiDSfGFwmPiSwkLnpi0ExziCaK5hzO4FKpwzQpkIAVwyFDq-KQSpWryXc92Tv35RZhseLJwq_Q";
+  const avatarUrl = "/booster-pfps/my-pfp.png";
+  const notifications: NotificationItem[] = [
+    { id: "queue", title: "2 new requests entered queue", meta: "Queue • Just now" },
+    { id: "payment", title: "Payment cleared for Order #88204", meta: "Finance • 2h ago" },
+  ];
 
   const handleNotificationToggle = () => {
     setIsNotificationsOn((current) => !current);
@@ -217,201 +224,42 @@ export default function BoosterDashboardPage() {
 
   return (
     <>
-      <header className="fixed top-0 z-50 flex h-16 w-full items-center justify-between border-b border-white/10 bg-slate-950/70 px-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] backdrop-blur-xl">
-        <div className="flex items-center gap-8">
-          <Link
-            href="/"
-            className="font-headline text-2xl font-bold tracking-tighter text-cyan-400 transition hover:text-cyan-300"
-          >
-            ZENITH BOOST
-          </Link>
-        </div>
+      <BoosterTopBar
+        avatarUrl={avatarUrl}
+        isNotificationsOn={isNotificationsOn}
+        unreadNotificationCount={unreadNotificationCount}
+        isNotificationsPanelOpen={isNotificationsPanelOpen}
+        onToggleNotificationsPanel={() => {
+          setIsProfileMenuOpen(false);
+          setIsNotificationsPanelOpen((current) => !current);
+        }}
+        onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
+        onToggleNotifications={handleNotificationToggle}
+        onMarkNotificationsRead={handleMarkNotificationsRead}
+        notifications={notifications}
+        isProfileMenuOpen={isProfileMenuOpen}
+        onToggleProfileMenu={() => {
+          setIsNotificationsPanelOpen(false);
+          setIsProfileMenuOpen((current) => !current);
+        }}
+        onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
+        onProfileAction={(action) => {
+          if (action === "Settings") {
+            router.push("/booster-profile");
+            return;
+          }
 
-        <div className="flex items-center gap-4">
-          <div className="relative z-[55]">
-            <button
-              type="button"
-              onClick={() => {
-                setIsProfileMenuOpen(false);
-                setIsNotificationsPanelOpen((current) => !current);
-              }}
-              className={`relative rounded-lg p-1 transition-all duration-200 active:scale-95 ${
-                isNotificationsOn ? "text-cyan-300" : "text-red-400 hover:text-red-300"
-              }`}
-            >
-              {isNotificationsOn ? <Bell className="h-6 w-6" /> : <BellOff className="h-6 w-6" />}
-              {unreadNotificationCount > 0 ? (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
-                  {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
-                </span>
-              ) : null}
-            </button>
+          setIsProfileMenuOpen(false);
+        }}
+      />
 
-            {isNotificationsPanelOpen ? (
-              <>
-                <button
-                  type="button"
-                  aria-label="Close notifications panel"
-                  onClick={() => setIsNotificationsPanelOpen(false)}
-                  className="fixed inset-0 z-[54] cursor-default"
-                ></button>
-                <div className="ghost-border absolute right-0 top-10 z-[55] w-[320px] rounded-xl border border-white/10 bg-surface-container p-4 shadow-2xl">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface">
-                      Notifications
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={handleMarkNotificationsRead}
-                      className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary-container"
-                    >
-                      Mark Read
-                    </button>
-                  </div>
+      <BoosterSidebar
+        active="dashboard"
+        isOnline={isSidebarOnline}
+        onToggleOnline={() => setIsSidebarOnline((current) => !current)}
+      />
 
-                  <div className="space-y-2">
-                    <div className="rounded-md border border-white/5 bg-surface-container-low px-3 py-2">
-                      <p className="text-xs font-semibold text-on-surface">2 new requests entered queue</p>
-                      <p className="text-[10px] uppercase tracking-wider text-on-surface-variant">
-                        Queue • Just now
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-white/5 bg-surface-container-low px-3 py-2">
-                      <p className="text-xs font-semibold text-on-surface">Payment cleared for Order #88204</p>
-                      <p className="text-[10px] uppercase tracking-wider text-on-surface-variant">
-                        Finance • 2h ago
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleNotificationToggle}
-                    className={`mt-3 flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-widest ${
-                      isNotificationsOn
-                        ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20"
-                        : "border-red-500/30 bg-red-500/15 text-red-300 hover:bg-red-500/25"
-                    }`}
-                  >
-                    {isNotificationsOn ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-                    {isNotificationsOn ? "Mute Notifications" : "Unmute Notifications"}
-                  </button>
-                </div>
-              </>
-            ) : null}
-          </div>
-
-          <div className="relative z-[56]">
-            <button
-              type="button"
-              onClick={() => {
-                setIsNotificationsPanelOpen(false);
-                setIsProfileMenuOpen((current) => !current);
-              }}
-              className="h-8 w-8 overflow-hidden rounded-full border border-primary/20"
-            >
-              <img alt="User profile avatar" className="h-full w-full object-cover" src={avatarUrl} />
-            </button>
-
-            {isProfileMenuOpen ? (
-              <>
-                <button
-                  type="button"
-                  aria-label="Close profile menu"
-                  onClick={() => setIsProfileMenuOpen(false)}
-                  className="fixed inset-0 z-[55] cursor-default"
-                ></button>
-                <div className="ghost-border absolute right-0 top-10 z-[56] w-[220px] rounded-xl border border-white/10 bg-surface-container p-2 shadow-2xl">
-                  {["View Profile", "Settings", "Help Support", "Logout"].map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => {
-                        if (item === "Settings") {
-                          window.location.href = "/booster-profile";
-                          return;
-                        }
-
-                        setIsProfileMenuOpen(false);
-                      }}
-                      className={`w-full rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-colors ${
-                        item === "Logout"
-                          ? "text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                          : "text-on-surface-variant hover:bg-white/10 hover:text-on-surface"
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </header>
-
-      <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r border-white/15 bg-[#04060a]/95 pt-20 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_24px_60px_rgba(0,0,0,0.6)] backdrop-blur-md">
-        <div className="mb-4 flex flex-col items-center border-b border-white/5 px-6 py-4">
-          <div className="ghost-border mb-2 flex h-16 w-16 items-center justify-center rounded-xl bg-surface-container-highest">
-            <Crown className="h-8 w-8 text-[#b87333]" />
-          </div>
-          <h3 className="font-headline font-bold text-on-surface">ROOKIE</h3>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">
-            Main Game: Not Set
-          </p>
-          <div className="mt-3 w-full space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              <span>Rookie XP</span>
-              <span>0%</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
-              <div className="primary-gradient h-full w-[0%]"></div>
-            </div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-300">
-              0 / 10000 XP
-            </p>
-          </div>
-        </div>
-
-        <nav className="font-label flex grow flex-col gap-2 p-4 text-sm font-semibold tracking-wide">
-          {renderNavItem("Dashboard")}
-          {renderNavItem("Requests")}
-          {renderNavItem("Payments")}
-          {renderNavItem("Chats")}
-        </nav>
-
-        <div className="font-label flex flex-col gap-2 border-t border-white/5 p-4 text-sm font-semibold">
-          <div className="mb-3 flex items-center justify-between rounded-md border border-white/10 bg-surface-container-high/60 px-2.5 py-2">
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isSidebarOnline ? "bg-emerald-400" : "bg-slate-500"}`}></span>
-              <span className="text-[11px] font-semibold text-on-surface-variant">{isSidebarOnline ? "Online" : "Offline"}</span>
-            </div>
-            <button
-              type="button"
-              aria-pressed={isSidebarOnline}
-              onClick={() => setIsSidebarOnline((current) => !current)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                isSidebarOnline ? "bg-cyan-400/70" : "bg-outline-variant"
-              }`}
-            >
-              <span
-                className={`inline-block h-3.5 w-3.5 transform rounded-full transition ${
-                  isSidebarOnline ? "translate-x-5 bg-slate-950" : "translate-x-1 bg-on-surface-variant"
-                }`}
-              ></span>
-            </button>
-          </div>
-          <a
-            href="#"
-            className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80"
-          >
-            <HelpCircle className="h-5 w-5" />
-            <span>Support</span>
-          </a>
-        </div>
-      </aside>
-
-      <main className="min-h-screen pb-24 pl-8 pr-8 pt-24 md:ml-64">
+      <main className="h-screen overflow-y-auto pb-24 pl-8 pr-8 pt-24 md:ml-64">
         <header className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div>
             <h1 className="font-headline mb-2 text-4xl font-bold tracking-tight text-on-surface">

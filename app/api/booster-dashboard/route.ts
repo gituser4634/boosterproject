@@ -18,7 +18,7 @@ export async function GET() {
     activityFeed: [],
     eliteTopPct: 0,
     eliteRating: 0,
-    unreadNotifications: 0,
+    unreadNotifications: 2,
   };
 
   return NextResponse.json(payload);

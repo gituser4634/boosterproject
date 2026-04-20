@@ -2,24 +2,23 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Bell,
-  ClipboardList,
-  Crown,
-  HelpCircle,
-  ImagePlus,
+  ArrowLeft,
   Info,
-  LayoutDashboard,
   MessageSquare,
   Mic,
   PlusCircle,
   Search,
   Send,
-  Settings,
   Smile,
-  Wallet,
 } from "lucide-react";
+import { BoosterMobileNav, BoosterSidebar } from "@/components/booster/shell-navigation";
+import { BoosterTopBar } from "@/components/booster/top-bar";
+import { Button } from "@/components/ui/button";
+import { FileInput } from "@/components/ui/file-input";
+import { Input } from "@/components/ui/input";
 
 type TabType = "chats" | "requests";
 type MessageType = "text" | "image" | "voice";
@@ -166,7 +165,8 @@ const initialRequestThreads: ChatThread[] = [
 
 const emojiPool = ["🔥", "✅", "💯", "🎯", "🚀", "😎", "🫡", "👍"];
 
-export default function BoosterChatsPage() {
+function BoosterChatsPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedThread = searchParams.get("thread");
 
@@ -179,8 +179,13 @@ export default function BoosterChatsPage() {
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
   const [isClientTyping, setIsClientTyping] = useState(false);
   const [isSidebarOnline, setIsSidebarOnline] = useState(true);
+  const [isNotificationsOn, setIsNotificationsOn] = useState(true);
+  const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(2);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [voiceCounter, setVoiceCounter] = useState(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const avatarUrl = "/booster-pfps/my-pfp.png";
 
   const activeList = tab === "chats" ? threads : requestThreads;
 
@@ -224,6 +229,14 @@ export default function BoosterChatsPage() {
     () => threads.reduce((acc, thread) => acc + (thread.hasUnread ? 1 : 0), 0),
     [threads]
   );
+
+  const handleMarkNotificationsRead = () => {
+    setUnreadNotificationCount(0);
+  };
+
+  const handleNotificationToggle = () => {
+    setIsNotificationsOn((current) => !current);
+  };
 
   const getClientTag = (status: ChatThread["clientStatus"]) => {
     if (status === "current") {
@@ -362,101 +375,51 @@ export default function BoosterChatsPage() {
 
   return (
     <>
-      <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r border-white/15 bg-[#04060a]/95 pt-20 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_24px_60px_rgba(0,0,0,0.6)] backdrop-blur-md">
-        <div className="mb-4 flex flex-col items-center border-b border-white/5 px-6 py-4">
-          <div className="ghost-border mb-2 flex h-16 w-16 items-center justify-center rounded-xl bg-surface-container-highest">
-            <Crown className="h-8 w-8 text-[#b87333]" />
-          </div>
-          <h3 className="font-headline font-bold text-on-surface">ROOKIE</h3>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">Main Game: Not Set</p>
-          <div className="mt-3 w-full space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              <span>Rookie XP</span>
-              <span>0%</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
-              <div className="primary-gradient h-full w-[0%]"></div>
-            </div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-300">0 / 10000 XP</p>
-          </div>
-        </div>
+      <BoosterSidebar
+        active="chats"
+        isOnline={isSidebarOnline}
+        onToggleOnline={() => setIsSidebarOnline((current) => !current)}
+      />
 
-        <nav className="font-label flex grow flex-col gap-2 p-4 text-sm font-semibold tracking-wide">
-          <Link href="/booster-dashboard" className="flex items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80">
-            <LayoutDashboard className="h-5 w-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/booster-requests" className="flex items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80">
-            <ClipboardList className="h-5 w-5" />
-            <span>Requests</span>
-          </Link>
-          <Link href="/booster-payments" className="flex items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80">
-            <Wallet className="h-5 w-5" />
-            <span>Payments</span>
-          </Link>
+      <BoosterTopBar
+        brandLabel="ZENITH BOOSTER"
+        brandClassName="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400"
+        headerClassName="fixed top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/5 bg-[#0b0e14]/65 px-8 pl-72 shadow-sm shadow-black/20 backdrop-blur-xl"
+        rightClassName="flex items-center gap-6 pr-8"
+        avatarUrl={avatarUrl}
+        avatarAlt="User Avatar"
+        avatarBorderClassName="border-cyan-400/30"
+        isNotificationsOn={isNotificationsOn}
+        unreadNotificationCount={unreadNotificationCount}
+        isNotificationsPanelOpen={isNotificationsPanelOpen}
+        onToggleNotificationsPanel={() => {
+          setIsProfileMenuOpen(false);
+          setIsNotificationsPanelOpen((current) => !current);
+        }}
+        onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
+        onToggleNotifications={handleNotificationToggle}
+        onMarkNotificationsRead={handleMarkNotificationsRead}
+        notifications={[
+          { id: "queue", title: "2 new requests entered queue", meta: "Queue • Just now" },
+          { id: "payment", title: "Payment cleared for Order #88204", meta: "Finance • 2h ago" },
+        ]}
+        isProfileMenuOpen={isProfileMenuOpen}
+        onToggleProfileMenu={() => {
+          setIsNotificationsPanelOpen(false);
+          setIsProfileMenuOpen((current) => !current);
+        }}
+        onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
+        onProfileAction={(action) => {
+          if (action === "Settings") {
+            router.push("/booster-profile");
+            return;
+          }
 
-          <div className="flex items-center gap-3 rounded-l-lg border-r-2 border-cyan-400 bg-cyan-400/10 p-3 text-cyan-400">
-            <MessageSquare className="h-5 w-5" />
-            <span>Chats</span>
-          </div>
-        </nav>
+          setIsProfileMenuOpen(false);
+        }}
+      />
 
-        <div className="px-4 pb-5">
-          <div className="mb-4 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-          <div className="mb-3 flex items-center justify-between rounded-md border border-white/10 bg-surface-container-high/60 px-2.5 py-2">
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isSidebarOnline ? "bg-emerald-400" : "bg-slate-500"}`}></span>
-              <span className="text-[11px] font-semibold text-on-surface-variant">{isSidebarOnline ? "Online" : "Offline"}</span>
-            </div>
-            <button
-              type="button"
-              aria-pressed={isSidebarOnline}
-              onClick={() => setIsSidebarOnline((current) => !current)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                isSidebarOnline ? "bg-cyan-400/70" : "bg-outline-variant"
-              }`}
-            >
-              <span
-                className={`inline-block h-3.5 w-3.5 transform rounded-full transition ${
-                  isSidebarOnline ? "translate-x-5 bg-slate-950" : "translate-x-1 bg-on-surface-variant"
-                }`}
-              ></span>
-            </button>
-          </div>
-          <a className="mb-1 flex items-center gap-3 rounded-lg px-4 py-2 text-slate-500 transition-all hover:bg-white/5 hover:text-slate-300" href="#">
-            <HelpCircle className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Support</span>
-          </a>
-          <Link href="/booster-profile" className="flex items-center gap-3 rounded-lg px-4 py-2 text-slate-500 transition-all hover:bg-white/5 hover:text-slate-300">
-            <Settings className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Settings</span>
-          </Link>
-        </div>
-      </aside>
-
-      <header className="fixed top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/5 bg-[#0b0e14]/65 px-8 pl-72 shadow-sm shadow-black/20 backdrop-blur-xl">
-        <Link href="/" className="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400">
-          ZENITH BOOSTER
-        </Link>
-
-        <div className="flex items-center gap-6 pr-8">
-          <div className="group relative cursor-pointer">
-            <Bell className="h-5 w-5 text-[#ecedf6] transition-colors group-hover:text-[#00E5FF]" />
-            {unreadCount > 0 ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-tertiary"></span> : null}
-          </div>
-          <div className="group flex cursor-pointer items-center gap-3">
-            <div className="h-8 w-8 overflow-hidden rounded-full border border-cyan-400/30">
-              <img
-                alt="User Avatar"
-                className="h-full w-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAy_jBww_i41ziqr3JxdS0ONwQQm-ic4Lf-TJoI6ofEXhOI5hk5gqrttgPIdc3T3ymg1_Ze_3RVmccnOJDPmz6m41ozanBQJP2hTMgj0KQfPadkDexnuVYrwO5nG-O1rLuzOoRtbr0pVyXSlsukgi4ydNYOHwJpRc7dYo3KCRbesfV3CV7r8egdHMzjj5JXDYPf1frv6H5Jd7FaANhosHJmp-c_eBJwaoETM1pGXHj2dUWidFtKelOBtEnWD0YpAyoDVP6XWqTcY38"
-              />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="ml-64 min-h-screen pt-16">
+      <main className="ml-64 h-screen overflow-hidden pt-16">
         <div className="grid h-[calc(100vh-4rem)] grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(0,1.2fr)] overflow-hidden lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-1">
         <section className="flex min-h-0 flex-col border-b border-outline-variant/10 bg-surface-container-low/85 lg:border-b-0 lg:border-r">
           <div className="p-6 pb-2">
@@ -464,24 +427,42 @@ export default function BoosterChatsPage() {
               <h2 className="headline text-2xl font-bold text-on-surface">Messages</h2>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setTab("requests");
-                setActiveThreadId(requestThreads[0]?.id ?? "");
-              }}
-              className="group mb-6 flex w-full items-center justify-between rounded-xl border border-primary/20 bg-surface-container-highest/25 px-4 py-3 transition-all duration-200 hover:border-primary/40 hover:bg-surface-container-highest/45"
-            >
-              <div className="flex items-center gap-3">
-                <MessageSquare className="h-5 w-5 text-primary" />
-                <span className="text-sm font-bold tracking-tight text-on-surface">Message Requests</span>
-              </div>
-              <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-on-primary-fixed">{requestThreads.length}</span>
-            </button>
+            <div className="mb-6 flex items-center gap-2">
+              {tab === "requests" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setTab("chats");
+                    setActiveThreadId(threads[0]?.id ?? "");
+                  }}
+                  className="h-10 w-10 rounded-xl border border-white/10 bg-surface-container-highest/20 text-on-surface-variant hover:bg-surface-container-highest/40 hover:text-on-surface"
+                  aria-label="Back to general chats"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              ) : null}
+
+              <Button
+                type="button"
+                onClick={() => {
+                  setTab("requests");
+                  setActiveThreadId(requestThreads[0]?.id ?? "");
+                }}
+                className="group h-auto w-full items-center justify-between rounded-xl border border-primary/20 bg-surface-container-highest/25 px-4 py-3 transition-all duration-200 hover:border-primary/40 hover:bg-surface-container-highest/45"
+              >
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-bold tracking-tight text-on-surface">Message Requests</span>
+                </div>
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-on-primary-fixed">{requestThreads.length}</span>
+              </Button>
+            </div>
 
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-outline" />
-              <input
+              <Input
                 className="w-full rounded-xl border-none bg-surface-container-lowest/90 py-2.5 pl-10 pr-4 text-sm placeholder:text-outline-variant/60 focus:ring-1 focus:ring-primary/50"
                 placeholder="Search conversations..."
                 type="text"
@@ -496,11 +477,11 @@ export default function BoosterChatsPage() {
               const isActive = activeThread?.id === thread.id;
 
               return (
-                <button
+                <Button
                   key={thread.id}
                   type="button"
                   onClick={() => openThread(thread.id)}
-                  className={`mb-2 w-full cursor-pointer rounded-xl border p-4 text-left transition-all duration-200 ${
+                  className={`mb-3 h-auto min-h-[92px] w-full cursor-pointer overflow-hidden rounded-xl border p-4 text-left transition-all duration-200 ${
                     isActive
                       ? "border-cyan-400/25 bg-surface-container-highest/55 shadow-[0_0_0_1px_rgba(143,245,255,0.06)]"
                       : "group border-white/5 bg-surface-container-high/30 hover:border-white/15 hover:bg-surface-container-high/55"
@@ -536,7 +517,7 @@ export default function BoosterChatsPage() {
                       </p>
                     </div>
                   </div>
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -576,25 +557,25 @@ export default function BoosterChatsPage() {
                 <div className="flex items-center gap-3">
                   {tab === "requests" ? (
                     <>
-                      <button
+                      <Button
                         type="button"
                         onClick={declineRequest}
                         className="rounded-md border border-red-500/50 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-red-300 transition hover:bg-red-500/10"
                       >
                         Decline
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={acceptRequest}
                         className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition hover:bg-emerald-500/20"
                       >
                         Accept Request
-                      </button>
+                      </Button>
                     </>
                   ) : null}
-                  <button className="p-2 text-outline-variant transition-colors hover:text-primary" type="button">
+                  <Button className="p-2 text-outline-variant transition-colors hover:text-primary" type="button" aria-label="Open conversation details">
                     <Info className="h-5 w-5" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -645,12 +626,12 @@ export default function BoosterChatsPage() {
               </div>
 
               <div className="z-10 border-t border-white/5 bg-surface/58 p-6 backdrop-blur-md">
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={sendImage} />
+                <FileInput ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={sendImage} />
 
                 {isEmojiOpen ? (
                   <div className="mb-3 flex w-fit gap-1 rounded-xl border border-outline-variant/20 bg-surface-container p-2 shadow-xl">
                     {emojiPool.map((emoji) => (
-                      <button
+                      <Button
                         key={emoji}
                         type="button"
                         onClick={() => {
@@ -660,19 +641,19 @@ export default function BoosterChatsPage() {
                         className="rounded px-2 py-1 text-base transition hover:bg-white/10"
                       >
                         {emoji}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 ) : null}
 
                 <div className="flex items-center gap-4 rounded-2xl border border-outline-variant/10 bg-surface-container-low/90 p-2 shadow-lg shadow-black/20">
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-outline-variant transition-colors hover:text-tertiary">
+                  <Button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-outline-variant transition-colors hover:text-tertiary" aria-label="Attach image">
                     <PlusCircle className="h-5 w-5" />
-                  </button>
-                  <button type="button" onClick={() => setIsEmojiOpen((current) => !current)} className="p-2 text-outline-variant transition-colors hover:text-secondary">
+                  </Button>
+                  <Button type="button" onClick={() => setIsEmojiOpen((current) => !current)} className="p-2 text-outline-variant transition-colors hover:text-secondary" aria-label="Toggle emoji picker">
                     <Smile className="h-5 w-5" />
-                  </button>
-                  <input
+                  </Button>
+                  <Input
                     className="flex-1 border-none bg-transparent text-sm text-on-surface placeholder:text-outline-variant/50 focus:ring-0"
                     placeholder={`Type a message to ${activeThread.customer.split(" ")[0]}...`}
                     type="text"
@@ -685,20 +666,23 @@ export default function BoosterChatsPage() {
                       }
                     }}
                   />
-                  <button type="button" onClick={sendText} className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-on-primary-fixed transition-all hover:bg-primary-fixed active:scale-90">
-                    <Send className="h-4 w-4" />
-                  </button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="icon"
+                    onClick={sendText}
+                    className="h-10 w-10 rounded-xl active:scale-90"
+                    aria-label="Send message"
+                  >
+                    <Send className="h-4 w-4 text-slate-950 stroke-[2.5]" />
+                  </Button>
                 </div>
                 <div className="mt-3 flex justify-between px-2">
                   <div className="flex gap-4">
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-outline">
-                      <ImagePlus className="h-3.5 w-3.5" />
-                      Attach Files
-                    </button>
-                    <button type="button" onClick={sendVoice} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-outline">
+                    <Button type="button" onClick={sendVoice} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-outline">
                       <Mic className="h-3.5 w-3.5" />
                       Voice
-                    </button>
+                    </Button>
                   </div>
                   <span className="font-mono text-[10px] tracking-tighter text-outline-variant/40">ZENITH_ENCRYPTED_COMMS_v2.0</span>
                 </div>
@@ -712,6 +696,17 @@ export default function BoosterChatsPage() {
         </section>
         </div>
       </main>
+
+      <BoosterMobileNav active="chats" />
     </>
   );
 }
+
+export default function BoosterChatsPage() {
+  return (
+    <Suspense fallback={<main className="ml-64 h-screen overflow-hidden pt-16" />}>
+      <BoosterChatsPageContent />
+    </Suspense>
+  );
+}
+

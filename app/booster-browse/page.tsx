@@ -1,11 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { BadgeCheck, Search, Sparkles, Star, Trophy, X } from "lucide-react";
+import { BadgeCheck, Search, Sparkles, Star, Trophy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { AuthLoginModal } from "@/components/shared/auth-modals";
 
 type Booster = {
+  id: string;
   name: string;
   game: string;
   rating: string;
@@ -17,7 +23,277 @@ type Booster = {
   image: string;
 };
 
-export default function BoosterBrowsePage() {
+const GAME_IMAGE_POOL: Record<string, string[]> = {
+  "Apex Legends": [
+    "https://i.ytimg.com/vi/oQtHENM_GZU/hqdefault.jpg",
+    "https://i.ytimg.com/vi/BSUqA0K7JII/hqdefault.jpg",
+    "https://i.ytimg.com/vi/QzfsGxrCD4o/hqdefault.jpg",
+  ],
+  Valorant: [
+    "https://i.ytimg.com/vi/e_E9W2vsRbQ/hqdefault.jpg",
+    "https://i.ytimg.com/vi/hhlgphVf-1g/hqdefault.jpg",
+    "https://i.ytimg.com/vi/lWr6dhTcu-E/hqdefault.jpg",
+  ],
+  "League of Legends": [
+    "https://i.ytimg.com/vi/IzMnCv_lPxI/hqdefault.jpg",
+    "https://i.ytimg.com/vi/BGtROJeMPeE/hqdefault.jpg",
+    "https://i.ytimg.com/vi/aR-KAldshAE/hqdefault.jpg",
+  ],
+  "Overwatch 2": [
+    "https://i.ytimg.com/vi/wB8BTbExm8g/hqdefault.jpg",
+    "https://i.ytimg.com/vi/GKXS_YA9s7E/hqdefault.jpg",
+    "https://i.ytimg.com/vi/LGgqyer-qr4/hqdefault.jpg",
+  ],
+  "Counter-Strike 2": [
+    "https://i.ytimg.com/vi/edYCtaNueQY/hqdefault.jpg",
+    "https://i.ytimg.com/vi/ExZtISgOxEQ/hqdefault.jpg",
+    "https://i.ytimg.com/vi/nSE38xjMLqE/hqdefault.jpg",
+  ],
+  "Dota 2": [
+    "https://i.ytimg.com/vi/-cSFPIwMEq4/hqdefault.jpg",
+    "https://i.ytimg.com/vi/Cp8neRiF9-k/hqdefault.jpg",
+    "https://i.ytimg.com/vi/SmnqsdeHFT0/hqdefault.jpg",
+  ],
+  "Rocket League": [
+    "https://i.ytimg.com/vi/SgSX3gOrj60/hqdefault.jpg",
+    "https://i.ytimg.com/vi/OmMF9EDbmQQ/hqdefault.jpg",
+    "https://i.ytimg.com/vi/lA4ITN8R0OY/hqdefault.jpg",
+  ],
+  Fortnite: [
+    "https://i.ytimg.com/vi/2gUtfBmw86Y/hqdefault.jpg",
+    "https://i.ytimg.com/vi/WJW-bzXZM8M/hqdefault.jpg",
+    "https://i.ytimg.com/vi/K4wEI5zhHB0/hqdefault.jpg",
+  ],
+};
+
+const GAME_RANK_POOL: Array<{
+  game: string;
+  icon: Booster["rankIcon"];
+  ranks: Array<{ label: string; value: number }>;
+}> = [
+  {
+    game: "Apex Legends",
+    icon: "military_tech",
+    ranks: [
+      { label: "Apex Predator", value: 5 },
+      { label: "Master", value: 4 },
+      { label: "Diamond", value: 3 },
+    ],
+  },
+  {
+    game: "Valorant",
+    icon: "workspace_premium",
+    ranks: [
+      { label: "Radiant", value: 5 },
+      { label: "Immortal", value: 4 },
+      { label: "Ascendant", value: 3 },
+    ],
+  },
+  {
+    game: "League of Legends",
+    icon: "stars",
+    ranks: [
+      { label: "Challenger", value: 5 },
+      { label: "Grandmaster", value: 4 },
+      { label: "Master", value: 3 },
+    ],
+  },
+  {
+    game: "Overwatch 2",
+    icon: "trophy",
+    ranks: [
+      { label: "Top 500", value: 5 },
+      { label: "Grandmaster", value: 4 },
+      { label: "Master", value: 3 },
+    ],
+  },
+  {
+    game: "Counter-Strike 2",
+    icon: "military_tech",
+    ranks: [
+      { label: "Global Elite", value: 5 },
+      { label: "Supreme", value: 4 },
+      { label: "Legendary Eagle", value: 3 },
+    ],
+  },
+  {
+    game: "Dota 2",
+    icon: "stars",
+    ranks: [
+      { label: "Immortal", value: 5 },
+      { label: "Divine", value: 4 },
+      { label: "Ancient", value: 3 },
+    ],
+  },
+  {
+    game: "Rocket League",
+    icon: "trophy",
+    ranks: [
+      { label: "Supersonic Legend", value: 5 },
+      { label: "Grand Champion", value: 4 },
+      { label: "Champion", value: 3 },
+    ],
+  },
+  {
+    game: "Fortnite",
+    icon: "workspace_premium",
+    ranks: [
+      { label: "Unreal", value: 5 },
+      { label: "Champion", value: 4 },
+      { label: "Elite", value: 3 },
+    ],
+  },
+];
+
+const NAME_PREFIXES = [
+  "Zen",
+  "Arc",
+  "Pulse",
+  "Vanta",
+  "Nova",
+  "Rune",
+  "Ghost",
+  "Cipher",
+  "Drift",
+  "Blaze",
+  "Aero",
+  "Axiom",
+  "Echo",
+  "Rogue",
+  "Prime",
+];
+
+const NAME_SUFFIXES = [
+  "Strike",
+  "Specter",
+  "Rift",
+  "Hunter",
+  "Knight",
+  "Reaper",
+  "Shroud",
+  "Fang",
+  "Pilot",
+  "Volt",
+  "Storm",
+  "Onyx",
+  "Havoc",
+  "Frost",
+  "Scout",
+];
+
+function createSeededRandom(seed: number) {
+  let state = seed >>> 0;
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function pickRandom<T>(items: T[], random: () => number): T {
+  return items[Math.floor(random() * items.length)] as T;
+}
+
+function getGameImage(game: string, random: () => number, variantIndex?: number): string {
+  const pool = GAME_IMAGE_POOL[game] ?? GAME_IMAGE_POOL["Apex Legends"];
+  if (!pool || pool.length === 0) {
+    return "https://i.ytimg.com/vi/oQtHENM_GZU/hqdefault.jpg";
+  }
+
+  if (typeof variantIndex === "number") {
+    return pool[variantIndex % pool.length] as string;
+  }
+
+  return pickRandom(pool, random);
+}
+
+const DEFAULT_BOOSTERS: Booster[] = [
+  {
+    id: "default-1",
+    name: "MOHAMED123",
+    game: "Apex Legends",
+    rating: "5.0",
+    rank: "Apex Predator",
+    rankIcon: "military_tech",
+    popularity: 97,
+    rankValue: 5,
+    live: true,
+    image: getGameImage("Apex Legends", () => 0.11, 0),
+  },
+  {
+    id: "default-2",
+    name: "SALMA444",
+    game: "Valorant",
+    rating: "4.9",
+    rank: "Radiant #42",
+    rankIcon: "workspace_premium",
+    popularity: 88,
+    rankValue: 4,
+    live: false,
+    image: "/booster-pfps/salma.png",
+  },
+  {
+    id: "default-3",
+    name: "Adam",
+    game: "League of Legends",
+    rating: "5.0",
+    rank: "Challenger",
+    rankIcon: "stars",
+    popularity: 95,
+    rankValue: 5,
+    live: false,
+    image: getGameImage("League of Legends", () => 0.33, 2),
+  },
+  {
+    id: "default-4",
+    name: "TAHERXx12",
+    game: "Overwatch 2",
+    rating: "4.8",
+    rank: "Top 500",
+    rankIcon: "trophy",
+    popularity: 82,
+    rankValue: 5,
+    live: false,
+    image: getGameImage("Overwatch 2", () => 0.44, 0),
+  },
+];
+
+function generateBoosterRoster(total: number, reservedNames: string[]): Booster[] {
+  const random = createSeededRandom(20260420);
+  const usernames = new Set<string>(reservedNames.map((name) => name.toUpperCase()));
+
+  const makeUsername = (index: number) => {
+    let username = "";
+    while (!username || usernames.has(username)) {
+      const prefix = pickRandom(NAME_PREFIXES, random);
+      const suffix = pickRandom(NAME_SUFFIXES, random);
+      const serial = Math.floor(random() * 9000) + 1000;
+      const connector = random() > 0.65 ? "_" : random() > 0.35 ? "" : "x";
+      username = `${prefix}${connector}${suffix}${serial}${index % 3 === 0 ? "" : ""}`.toUpperCase();
+    }
+    usernames.add(username);
+    return username;
+  };
+
+  return Array.from({ length: total }).map((_, index) => {
+    const gameData = pickRandom(GAME_RANK_POOL, random);
+    const rankData = pickRandom(gameData.ranks, random);
+
+    return {
+      id: `booster-${index + 1}`,
+      name: makeUsername(index),
+      game: gameData.game,
+      rating: (4.3 + random() * 0.7).toFixed(1),
+      rank: rankData.label,
+      rankIcon: gameData.icon,
+      popularity: Math.floor(68 + random() * 32),
+      rankValue: rankData.value,
+      live: random() > 0.68,
+      image: getGameImage(gameData.game, random),
+    };
+  });
+}
+
+function BoosterBrowsePageContent() {
   const searchParams = useSearchParams();
   const [selectedGame, setSelectedGame] = useState("all");
   const [selectedRank, setSelectedRank] = useState("all");
@@ -33,56 +309,10 @@ export default function BoosterBrowsePage() {
     setSearchText(searchParams.get("q") ?? "");
   }, [searchParams]);
 
-  const boosters: Booster[] = [
-    {
-      name: "MOHAMED123",
-      game: "Apex Legends",
-      rating: "5.0",
-      rank: "Apex Predator",
-      rankIcon: "military_tech",
-      popularity: 97,
-      rankValue: 4,
-      live: true,
-      image:
-        "https://scontent.ftun15-1.fna.fbcdn.net/v/t39.30808-1/576952454_1436088074602191_7652156089798589190_n.jpg?stp=c446.0.1148.1148a_dst-jpg_s200x200_tt6&_nc_cat=103&ccb=1-7&_nc_sid=e99d92&_nc_ohc=5FwttousWeUQ7kNvwE2_dOn&_nc_oc=AdpPk4mtAIl23paB3xhJJBwWv2nX6TeHu1ST7rflEfluu-RBof0n3HUrQ-vTuGuZWxE&_nc_zt=24&_nc_ht=scontent.ftun15-1.fna&_nc_gid=SLWLHC_59ZkFmSMtogr80A&_nc_ss=7a3a8&oh=00_Af0A48KoauoK8UwFMnMGF5pzA-Y_8_wIedIQnnUsCPbeBw&oe=69E194CD",
-    },
-    {
-      name: "SALMA444",
-      game: "Valorant",
-      rating: "4.9",
-      rank: "Radiant #42",
-      rankIcon: "workspace_premium",
-      popularity: 88,
-      rankValue: 3,
-      live: false,
-      image:
-        "https://scontent.ftun15-1.fna.fbcdn.net/v/t39.30808-1/410088379_1490825255102121_3710042049867810931_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=101&ccb=1-7&_nc_sid=e99d92&_nc_ohc=_kSMp2EeG-QQ7kNvwGlNKTg&_nc_oc=Adp_MILVnCVDTs_ebIdxlYcwbG3_fRIPGGzTeVjxZdpz9LtfAQYSkwXlqV2PdBgTD9Y&_nc_zt=24&_nc_ht=scontent.ftun15-1.fna&_nc_gid=AqYDt4sKU_0rHSiYRfXtxQ&_nc_ss=7a3a8&oh=00_Af1zWPBcBpwet9BbP-YmFjO9zrg2lYLFHfRbmRHcVdvpWQ&oe=69E192A2",
-    },
-    {
-      name: "Adam",
-      game: "League of Legends",
-      rating: "5.0",
-      rank: "Challenger",
-      rankIcon: "stars",
-      popularity: 95,
-      rankValue: 5,
-      live: false,
-      image:
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Black_colour.jpg/960px-Black_colour.jpg",
-    },
-    {
-      name: "TAHERXx12",
-      game: "Overwatch 2",
-      rating: "4.8",
-      rank: "Top 500",
-      rankIcon: "trophy",
-      popularity: 82,
-      rankValue: 2,
-      live: false,
-      image:
-        "https://scontent.ftun15-1.fna.fbcdn.net/v/t39.30808-1/462228392_2496981260655405_7587418930506211631_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=110&ccb=1-7&_nc_sid=e99d92&_nc_ohc=2WP56qrdVRsQ7kNvwFWkYS1&_nc_oc=Adoq-ZuUDnBhCQbyAR9VqREYcSxy5LvOkJlDh0N84iYLiDROjba75ybNbZY9hlt-tko&_nc_zt=24&_nc_ht=scontent.ftun15-1.fna&_nc_gid=mhkCClg0bo0Nr3kTbd-DLg&_nc_ss=7a3a8&oh=00_Af0mTktaRLpe0cPJdYydbfjfpXr8CNbc7S3pXGW71HVz1w&oe=69E1BA45",
-    },
-  ];
+  const boosters = useMemo(() => {
+    const generated = generateBoosterRoster(32, DEFAULT_BOOSTERS.map((booster) => booster.name));
+    return [...DEFAULT_BOOSTERS, ...generated];
+  }, []);
 
   const availableGames = useMemo(
     () => ["all", ...new Set(boosters.map((booster) => booster.game))],
@@ -184,13 +414,15 @@ export default function BoosterBrowsePage() {
                 className="h-5 w-5 opacity-90"
               />
             </a>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => setIsLoginOpen(true)}
-              className="top-panel-link px-2 py-2 text-sm font-bold uppercase tracking-wide"
+              className="top-panel-link px-2 py-2"
             >
               Login
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -209,9 +441,9 @@ export default function BoosterBrowsePage() {
             </div>
 
             <div className="ghost-border mb-8 grid grid-cols-1 gap-3 rounded-xl bg-surface-container p-4 md:grid-cols-4">
-              <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+              <Label className="text-xs">
                 Filter By Game
-                <select
+                <Select
                   value={selectedGame}
                   onChange={(event) => setSelectedGame(event.target.value)}
                   className="mt-2 w-full rounded-md border border-outline/30 bg-surface-container-high px-3 py-2 text-sm uppercase tracking-wide text-on-surface outline-none transition focus:border-primary"
@@ -221,12 +453,12 @@ export default function BoosterBrowsePage() {
                       {game === "all" ? "All Games" : game}
                     </option>
                   ))}
-                </select>
-              </label>
+                </Select>
+              </Label>
 
-              <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+              <Label className="text-xs">
                 Filter By Rank
-                <select
+                <Select
                   value={selectedRank}
                   onChange={(event) => setSelectedRank(event.target.value)}
                   className="mt-2 w-full rounded-md border border-outline/30 bg-surface-container-high px-3 py-2 text-sm uppercase tracking-wide text-on-surface outline-none transition focus:border-primary"
@@ -236,12 +468,12 @@ export default function BoosterBrowsePage() {
                       {rank === "all" ? "All Ranks" : rank}
                     </option>
                   ))}
-                </select>
-              </label>
+                </Select>
+              </Label>
 
-              <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+              <Label className="text-xs">
                 Sort By
-                <select
+                <Select
                   value={sortBy}
                   onChange={(event) =>
                     setSortBy(event.target.value as "game" | "popularity" | "rating" | "rank")
@@ -252,19 +484,19 @@ export default function BoosterBrowsePage() {
                   <option value="popularity">Popularity</option>
                   <option value="rating">Rating</option>
                   <option value="rank">Booster Rank In Server</option>
-                </select>
-              </label>
+                </Select>
+              </Label>
 
-              <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+              <Label className="text-xs">
                 Search
-                <input
+                <Input
                   type="text"
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
                   placeholder="Name, game, or rank"
-                  className="mt-2 w-full rounded-md border border-outline/30 bg-surface-container-high px-3 py-2 text-sm text-on-surface outline-none transition focus:border-primary"
+                  className="mt-2 border-outline/30 bg-surface-container-high px-3 py-2"
                 />
-              </label>
+              </Label>
             </div>
 
             <div className="mb-5 flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-wider">
@@ -282,7 +514,7 @@ export default function BoosterBrowsePage() {
               {visibleBoosters.length > 0 ? (
                 visibleBoosters.map((booster) => (
                   <div
-                    key={booster.name}
+                    key={booster.id}
                     className="group ghost-border overflow-hidden rounded-xl bg-surface-container-highest"
                   >
                     <div className="relative h-64 overflow-hidden">
@@ -335,92 +567,22 @@ export default function BoosterBrowsePage() {
         </section>
       </main>
 
-      {isLoginOpen ? (
-        <div
-          className="modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-background/65 px-4 backdrop-blur-md"
-          onClick={() => setIsLoginOpen(false)}
-        >
-          <div
-            className="modal-panel-enter ghost-border w-full max-w-lg rounded-2xl border border-outline/30 bg-surface-container/85 p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="font-headline text-3xl font-bold tracking-tight text-primary-fixed">
-                  Welcome Back
-                </h3>
-                <p className="mt-2 text-sm text-on-surface-variant">
-                  Sign in as a booster or client to continue.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsLoginOpen(false)}
-                className="rounded-md p-2 text-on-surface-variant transition-colors hover:bg-surface-variant/50 hover:text-on-surface"
-                aria-label="Close login modal"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="mb-6 grid grid-cols-2 gap-2 rounded-lg bg-surface-dim p-1">
-              <button
-                type="button"
-                onClick={() => setLoginType("booster")}
-                className={`rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
-                  loginType === "booster"
-                    ? "primary-gradient text-on-primary-fixed"
-                    : "text-on-surface-variant hover:bg-surface-variant/60"
-                }`}
-              >
-                Booster Login
-              </button>
-              <button
-                type="button"
-                onClick={() => setLoginType("client")}
-                className={`rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
-                  loginType === "client"
-                    ? "primary-gradient text-on-primary-fixed"
-                    : "text-on-surface-variant hover:bg-surface-variant/60"
-                }`}
-              >
-                Client Login
-              </button>
-            </div>
-
-            <form className="space-y-4">
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  {loginType === "booster" ? "Booster Email" : "Client Email"}
-                </label>
-                <input
-                  type="email"
-                  placeholder={loginType === "booster" ? "booster@email.com" : "client@email.com"}
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="Enter your password"
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <button
-                type="button"
-                className="primary-gradient mt-2 w-full rounded-md px-5 py-3 font-bold uppercase tracking-wide text-on-primary-fixed"
-              >
-                {loginType === "booster" ? "Login as Booster" : "Login as Client"}
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : null}
+      <AuthLoginModal
+        open={isLoginOpen}
+        onOpenChange={setIsLoginOpen}
+        loginType={loginType}
+        onLoginTypeChange={setLoginType}
+        overlayClassName="modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-background/65 px-4 backdrop-blur-md"
+        panelClassName="modal-panel-enter ghost-border w-full max-w-lg rounded-2xl border border-outline/30 bg-surface-container/85 p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+      />
     </>
+  );
+}
+
+export default function BoosterBrowsePage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-background pt-28" />}>
+      <BoosterBrowsePageContent />
+    </Suspense>
   );
 }

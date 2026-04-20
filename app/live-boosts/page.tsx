@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Gamepad2, Rocket, ShieldCheck, Swords, Trophy, X } from "lucide-react";
+import { Gamepad2, Rocket, ShieldCheck, Swords, Trophy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AuthLoginModal } from "@/components/shared/auth-modals";
 
 const particleIcons = [Gamepad2, Trophy, Swords, Rocket, ShieldCheck, Gamepad2, Trophy, Rocket];
 
@@ -56,13 +58,15 @@ export default function LiveBoostsComingSoonPage() {
                 className="h-5 w-5 opacity-90"
               />
             </a>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => setIsLoginOpen(true)}
-              className="top-panel-link px-2 py-2 text-sm font-bold uppercase tracking-wide"
+              className="top-panel-link px-2 py-2"
             >
               Login
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -117,103 +121,22 @@ export default function LiveBoostsComingSoonPage() {
             </div>
 
             <div className="mt-10">
-              <Link
-                href="/"
-                className="cta-flame-soft cta-flame-soft-primary inline-flex items-center rounded-md border border-primary/40 bg-surface-container-high px-8 py-3 text-sm font-bold uppercase tracking-wider text-on-surface transition hover:text-primary"
-              >
-                Back To Landing
-              </Link>
+              <Button asChild variant="outline" size="lg" className="cta-flame-soft cta-flame-soft-primary">
+                <Link href="/">Back To Landing</Link>
+              </Button>
             </div>
           </div>
         </section>
       </main>
 
-      {isLoginOpen ? (
-        <div
-          className="modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-background/65 px-4 backdrop-blur-md"
-          onClick={() => setIsLoginOpen(false)}
-        >
-          <div
-            className="modal-panel-enter ghost-border w-full max-w-lg rounded-2xl border border-outline/30 bg-surface-container/85 p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="font-headline text-3xl font-bold tracking-tight text-primary-fixed">
-                  Welcome Back
-                </h3>
-                <p className="mt-2 text-sm text-on-surface-variant">
-                  Sign in as a booster or client to continue.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsLoginOpen(false)}
-                className="rounded-md p-2 text-on-surface-variant transition-colors hover:bg-surface-variant/50 hover:text-on-surface"
-                aria-label="Close login modal"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="mb-6 grid grid-cols-2 gap-2 rounded-lg bg-surface-dim p-1">
-              <button
-                type="button"
-                onClick={() => setLoginType("booster")}
-                className={`rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
-                  loginType === "booster"
-                    ? "primary-gradient text-on-primary-fixed"
-                    : "text-on-surface-variant hover:bg-surface-variant/60"
-                }`}
-              >
-                Booster Login
-              </button>
-              <button
-                type="button"
-                onClick={() => setLoginType("client")}
-                className={`rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
-                  loginType === "client"
-                    ? "primary-gradient text-on-primary-fixed"
-                    : "text-on-surface-variant hover:bg-surface-variant/60"
-                }`}
-              >
-                Client Login
-              </button>
-            </div>
-
-            <form className="space-y-4">
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  {loginType === "booster" ? "Booster Email" : "Client Email"}
-                </label>
-                <input
-                  type="email"
-                  placeholder={loginType === "booster" ? "booster@email.com" : "client@email.com"}
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="Enter your password"
-                  className="w-full rounded-md border border-outline/25 bg-surface-container-high/80 px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary"
-                />
-              </div>
-
-              <button
-                type="button"
-                className="primary-gradient mt-2 w-full rounded-md px-5 py-3 font-bold uppercase tracking-wide text-on-primary-fixed"
-              >
-                {loginType === "booster" ? "Login as Booster" : "Login as Client"}
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : null}
+      <AuthLoginModal
+        open={isLoginOpen}
+        onOpenChange={setIsLoginOpen}
+        loginType={loginType}
+        onLoginTypeChange={setLoginType}
+        overlayClassName="modal-overlay-enter fixed inset-0 z-[80] flex items-center justify-center bg-background/65 px-4 backdrop-blur-md"
+        panelClassName="modal-panel-enter ghost-border w-full max-w-lg rounded-2xl border border-outline/30 bg-surface-container/85 p-6 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+      />
     </>
   );
 }

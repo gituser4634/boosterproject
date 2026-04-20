@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
-  Bell,
-  BellOff,
   CircleHelp,
   ClipboardList,
   Crown,
@@ -14,6 +13,8 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { BoosterSidebar } from "@/components/booster/shell-navigation";
+import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
 
 type RequestType = "Boost Request" | "Coaching" | "Play Together";
 
@@ -127,6 +128,7 @@ const scheduleByRequest: Record<string, WeeklySchedule[]> = {
 };
 
 export default function BoosterRequestsPage() {
+  const router = useRouter();
   const [requestCards, setRequestCards] = useState<RequestCard[]>(initialRequestCards);
   const [inspectingRequestId, setInspectingRequestId] = useState<string | null>(null);
   const [isAcceptStepUnlocked, setIsAcceptStepUnlocked] = useState(false);
@@ -250,196 +252,45 @@ export default function BoosterRequestsPage() {
 
   return (
     <>
-      <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-slate-950/70 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] backdrop-blur-xl">
-        <div className="flex h-16 w-full items-center justify-between px-6">
-          <Link href="/" className="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400">
-            ZENITH BOOSTER
-          </Link>
-          <div className="flex items-center gap-6">
-            <div className="relative z-[55]">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProfileMenuOpen(false);
-                  setIsNotificationsPanelOpen((current) => !current);
-                }}
-                className={`relative rounded-lg p-1 transition-all duration-200 active:scale-95 ${
-                  isNotificationsOn ? "text-cyan-300" : "text-red-400 hover:text-red-300"
-                }`}
-              >
-                {isNotificationsOn ? <Bell className="h-6 w-6" /> : <BellOff className="h-6 w-6" />}
-                {unreadNotificationCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
-                    {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
-                  </span>
-                ) : null}
-              </button>
+      <BoosterTopBar
+        avatarUrl="/booster-pfps/my-pfp.png"
+        isNotificationsOn={isNotificationsOn}
+        unreadNotificationCount={unreadNotificationCount}
+        isNotificationsPanelOpen={isNotificationsPanelOpen}
+        onToggleNotificationsPanel={() => {
+          setIsProfileMenuOpen(false);
+          setIsNotificationsPanelOpen((current) => !current);
+        }}
+        onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
+        onToggleNotifications={() => setIsNotificationsOn((current) => !current)}
+        onMarkNotificationsRead={handleMarkNotificationsRead}
+        notifications={[
+          { id: "queue", title: "New request waiting for review", meta: "Queue • Just now" },
+          { id: "schedule", title: "Schedule conflict detected", meta: "Calendar • 5m ago" },
+        ] satisfies NotificationItem[]}
+        isProfileMenuOpen={isProfileMenuOpen}
+        onToggleProfileMenu={() => {
+          setIsNotificationsPanelOpen(false);
+          setIsProfileMenuOpen((current) => !current);
+        }}
+        onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
+        onProfileAction={(action) => {
+          if (action === "Settings") {
+            router.push("/booster-profile");
+            return;
+          }
 
-              {isNotificationsPanelOpen ? (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Close notifications panel"
-                    onClick={() => setIsNotificationsPanelOpen(false)}
-                    className="fixed inset-0 z-[54] cursor-default"
-                  ></button>
-                  <div className="ghost-border absolute right-0 top-10 z-[55] w-[320px] rounded-xl border border-white/10 bg-surface-container p-4 shadow-2xl">
-                    <div className="mb-3 flex items-center justify-between">
-                      <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface">Notifications</h3>
-                      <button
-                        type="button"
-                        onClick={handleMarkNotificationsRead}
-                        className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary-container"
-                      >
-                        Mark Read
-                      </button>
-                    </div>
+          setIsProfileMenuOpen(false);
+        }}
+      />
 
-                    <div className="space-y-2">
-                      <div className="rounded-md border border-white/5 bg-surface-container-low px-3 py-2">
-                        <p className="text-xs font-semibold text-on-surface">New request waiting for review</p>
-                        <p className="text-[10px] uppercase tracking-wider text-on-surface-variant">Queue • Just now</p>
-                      </div>
-                      <div className="rounded-md border border-white/5 bg-surface-container-low px-3 py-2">
-                        <p className="text-xs font-semibold text-on-surface">Schedule conflict detected</p>
-                        <p className="text-[10px] uppercase tracking-wider text-on-surface-variant">Calendar • 5m ago</p>
-                      </div>
-                    </div>
+      <BoosterSidebar
+        active="requests"
+        isOnline={isSidebarOnline}
+        onToggleOnline={() => setIsSidebarOnline((current) => !current)}
+      />
 
-                    <button
-                      type="button"
-                      onClick={() => setIsNotificationsOn((current) => !current)}
-                      className={`mt-3 flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-widest ${
-                        isNotificationsOn
-                          ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20"
-                          : "border-red-500/30 bg-red-500/15 text-red-300 hover:bg-red-500/25"
-                      }`}
-                    >
-                      {isNotificationsOn ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-                      {isNotificationsOn ? "Mute Notifications" : "Unmute Notifications"}
-                    </button>
-                  </div>
-                </>
-              ) : null}
-            </div>
-
-            <div className="relative z-[56]">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsNotificationsPanelOpen(false);
-                  setIsProfileMenuOpen((current) => !current);
-                }}
-                className="h-8 w-8 overflow-hidden rounded-full border border-primary/20"
-              >
-                <img
-                  alt="Booster profile avatar"
-                  className="h-full w-full object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOpmET-_XwpMu-U8Yyfwf7q3YBENVlPKtJSSetfzesDBvB_EBNOWEuW-JWGPYwxhcqPr6lwbqPOLNhMfpBUDn2ULU_HHxdcAATM2neuwjO4b7xcq1HSLBkxSJJUM-cnAqIHs6TG4u1xwzzoHSJ8RoQfXgNyUiz8wafsJPOdh5ScjjbzPsSDz3X0VlwGWioSiVsPgd5GDe4e0Z_Ks4bvmTCQO3ZMKE1qji8vAWXOAityeFB8pCvJbsIoPJPsA71xuU_7CawCwyZoZE"
-                />
-              </button>
-
-              {isProfileMenuOpen ? (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Close profile menu"
-                    onClick={() => setIsProfileMenuOpen(false)}
-                    className="fixed inset-0 z-[55] cursor-default"
-                  ></button>
-                  <div className="ghost-border absolute right-0 top-10 z-[56] w-[220px] rounded-xl border border-white/10 bg-surface-container p-2 shadow-2xl">
-                    {["View Profile", "Settings", "Help Support", "Logout"].map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => {
-                          if (item === "Settings") {
-                            window.location.href = "/booster-profile";
-                            return;
-                          }
-
-                          setIsProfileMenuOpen(false);
-                        }}
-                        className={`w-full rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-colors ${
-                          item === "Logout"
-                            ? "text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                            : "text-on-surface-variant hover:bg-white/10 hover:text-on-surface"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r border-white/15 bg-[#04060a]/95 pt-20 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_24px_60px_rgba(0,0,0,0.6)] backdrop-blur-md">
-        <div className="mb-4 flex flex-col items-center border-b border-white/5 px-6 py-4">
-          <div className="ghost-border mb-2 flex h-16 w-16 items-center justify-center rounded-xl bg-surface-container-highest">
-            <Crown className="h-8 w-8 text-[#b87333]" />
-          </div>
-          <h3 className="font-headline font-bold text-on-surface">ROOKIE</h3>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">Main Game: Not Set</p>
-          <div className="mt-3 w-full space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              <span>Rookie XP</span>
-              <span>0%</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
-              <div className="primary-gradient h-full w-[0%]"></div>
-            </div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-300">0 / 10000 XP</p>
-          </div>
-        </div>
-
-        <nav className="font-label flex grow flex-col gap-2 p-4 text-sm font-semibold tracking-wide">
-          {renderSidebarItem("Dashboard")}
-          {renderSidebarItem("Requests")}
-          {renderSidebarItem("Payments")}
-          {renderSidebarItem("Chats")}
-        </nav>
-
-        <div className="px-4 pb-5">
-          <div className="mb-4 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-          <div className="mb-3 flex items-center justify-between rounded-md border border-white/10 bg-surface-container-high/60 px-2.5 py-2">
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isSidebarOnline ? "bg-emerald-400" : "bg-slate-500"}`}></span>
-              <span className="text-[11px] font-semibold text-on-surface-variant">{isSidebarOnline ? "Online" : "Offline"}</span>
-            </div>
-            <button
-              type="button"
-              aria-pressed={isSidebarOnline}
-              onClick={() => setIsSidebarOnline((current) => !current)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                isSidebarOnline ? "bg-cyan-400/70" : "bg-outline-variant"
-              }`}
-            >
-              <span
-                className={`inline-block h-3.5 w-3.5 transform rounded-full transition ${
-                  isSidebarOnline ? "translate-x-5 bg-slate-950" : "translate-x-1 bg-on-surface-variant"
-                }`}
-              ></span>
-            </button>
-          </div>
-          <button className="mb-4 w-full rounded-md bg-gradient-to-r from-primary to-primary-container py-3 text-xs font-bold uppercase tracking-widest text-on-primary-fixed transition-all hover:brightness-110 active:scale-95">
-            GO ONLINE
-          </button>
-          <a className="mb-1 flex items-center gap-3 rounded-lg px-4 py-2 text-slate-500 transition-all hover:bg-white/5 hover:text-slate-300" href="#">
-            <CircleHelp className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Support</span>
-          </a>
-          <Link href="/booster-profile" className="flex items-center gap-3 rounded-lg px-4 py-2 text-slate-500 transition-all hover:bg-white/5 hover:text-slate-300">
-            <Settings className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Settings</span>
-          </Link>
-        </div>
-      </aside>
-
-      <main className="min-h-screen pb-24 pl-8 pr-8 pt-24 md:ml-64">
+      <main className="h-screen overflow-y-auto pb-24 pl-8 pr-8 pt-24 md:ml-64">
         <div className="mx-auto max-w-6xl p-6 md:p-10">
           <header className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div className="max-w-2xl">

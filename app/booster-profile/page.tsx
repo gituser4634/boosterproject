@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   AtSign,
-  Bell,
-  BellOff,
   ClipboardList,
   Crown,
   Edit3,
@@ -26,6 +25,22 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { BoosterSidebar } from "@/components/booster/shell-navigation";
+import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
+import { PickerSheet } from "@/components/booster/picker-sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  defaultAvatar,
+  gameRanks,
+  supportedCountries,
+  supportedGames,
+  supportedLanguages,
+  supportedSocialPlatforms,
+} from "./data";
 
 type GameEntry = {
   id: number;
@@ -41,115 +56,33 @@ type SocialLinkEntry = {
 };
 
 export default function BoosterProfilePage() {
-  const defaultAvatar =
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuADGMPc58JnAfcBzvLyIo5qkqz861CqAi2kRXKqx1gjEj1mVFqKmSUA0k3Ns44qVLSgXff8Dvl4WYxynrhCwNlQYJZsB7RKOcVAlbN_YSTB5KHNvIKPWarZLEjKZ9drvUkaiEcYuyrGqSknaEs6XETy7d5Nz36mKTvrutxLGGwNmjIT_nmSIecap682d8zCb7UtNANKeC8rle5mD1MK6RpYT6cipd-PCiddufiYGwh-34mCU_nDN6NmTRRwSigIhSUc0vnSaT-IgwA";
-  const supportedLanguages = [
-    "English",
-    "Mandarin Chinese",
-    "Hindi",
-    "Spanish",
-    "French",
-    "Arabic",
-    "Bengali",
-    "Portuguese",
-    "Russian",
-    "Urdu",
-    "Indonesian",
-    "German",
-    "Japanese",
-    "Nigerian Pidgin",
-    "Marathi",
-    "Telugu",
-    "Turkish",
-    "Tamil",
-    "Vietnamese",
-    "Korean",
-  ];
+  const savedMainGameStorageKey = "booster-main-game";
+  const router = useRouter();
   const [isOnline, setIsOnline] = useState(true);
   const [isNotificationsOn, setIsNotificationsOn] = useState(true);
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(2);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(defaultAvatar);
   const [uiMessage, setUiMessage] = useState("Ready");
   const [languages, setLanguages] = useState<string[]>([]);
   const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
   const [languageToAdd, setLanguageToAdd] = useState("");
-  const supportedCountries = [
-    "United States",
-    "United Kingdom",
-    "Canada",
-    "Germany",
-    "France",
-    "Spain",
-    "Italy",
-    "Netherlands",
-    "Sweden",
-    "Norway",
-    "Finland",
-    "Turkey",
-    "Morocco",
-    "Tunisia",
-    "Algeria",
-    "Egypt",
-    "Saudi Arabia",
-    "United Arab Emirates",
-    "India",
-    "Japan",
-    "South Korea",
-    "Brazil",
-    "Mexico",
-    "Argentina",
-    "Australia",
-  ];
   const [countryOfOrigin, setCountryOfOrigin] = useState("");
   const [isCountryPickerOpen, setIsCountryPickerOpen] = useState(false);
   const [countryToSet, setCountryToSet] = useState("");
-  const supportedGames = [
-    "CS2",
-    "APEX LEGENDS",
-    "DOTA 2",
-    "LEAGUE OF LEGENDS",
-    "Valorant",
-    "Brawlhalla",
-  ];
-  const gameRanks: Record<string, string[]> = {
-    CS2: ["Global Elite", "Legendary Eagle", "Distinguished Master", "Supreme", "DMG"],
-    "APEX LEGENDS": ["Apex Predator", "Master", "Diamond", "Platinum", "Gold"],
-    "DOTA 2": ["Immortal", "Divine", "Ancient", "Legend", "Archon"],
-    "LEAGUE OF LEGENDS": [
-      "Challenger",
-      "Grandmaster",
-      "Master",
-      "Diamond",
-      "Emerald",
-      "Platinum",
-    ],
-    Valorant: ["Radiant", "Immortal III", "Immortal II", "Immortal I", "Ascendant", "Diamond"],
-    Brawlhalla: ["Valhallan", "Diamond", "Platinum", "Gold", "Silver"],
-  };
   const [activeGames, setActiveGames] = useState<GameEntry[]>([]);
   const [nextGameId, setNextGameId] = useState(1);
   const [isGamePickerOpen, setIsGamePickerOpen] = useState(false);
   const [gameToAdd, setGameToAdd] = useState("");
   const [rankToAdd, setRankToAdd] = useState("");
-  const supportedSocialPlatforms = [
-    "Twitch",
-    "Discord",
-    "Twitter (X)",
-    "YouTube",
-    "TikTok",
-    "Instagram",
-    "Steam",
-    "Xbox",
-    "PlayStation",
-  ];
   const [socialLinks, setSocialLinks] = useState<SocialLinkEntry[]>([]);
   const [nextSocialId, setNextSocialId] = useState(1);
   const [isSocialPickerOpen, setIsSocialPickerOpen] = useState(false);
   const [socialPlatformToAdd, setSocialPlatformToAdd] = useState("");
   const [socialUsernameToAdd, setSocialUsernameToAdd] = useState("");
   const [primaryGame, setPrimaryGame] = useState("");
+  const [savedPrimaryGame, setSavedPrimaryGame] = useState("");
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [isDeactivated, setIsDeactivated] = useState(false);
   const isLoggedInBooster = true;
@@ -158,6 +91,10 @@ export default function BoosterProfilePage() {
     next: "",
     confirm: "",
   });
+  const notifications: NotificationItem[] = [
+    { id: "request", title: "New boost request assigned", meta: "Valorant • 2 min ago" },
+    { id: "message", title: "Client sent you a message", meta: "Inbox • 14 min ago" },
+  ];
 
   const boosterNavLinks = [
     { icon: "dashboard", label: "Dashboard", href: "#" },
@@ -220,7 +157,7 @@ export default function BoosterProfilePage() {
 
   const handleProfileAction = (action: string) => {
     if (action === "Settings") {
-      window.location.href = "/booster-profile";
+      router.push("/booster-profile");
       return;
     }
 
@@ -384,8 +321,17 @@ export default function BoosterProfilePage() {
       showStatus("Account is deactivated. Service expertise cannot be saved.");
       return;
     }
+    const trimmedGame = primaryGame.trim();
+    setSavedPrimaryGame(trimmedGame);
+    window.localStorage.setItem(savedMainGameStorageKey, trimmedGame);
     showStatus("Service expertise saved locally.");
   };
+
+  useEffect(() => {
+    const savedGame = window.localStorage.getItem(savedMainGameStorageKey) ?? "";
+    setSavedPrimaryGame(savedGame);
+    setPrimaryGame(savedGame);
+  }, []);
 
   const handleOpenSocialPicker = () => {
     if (isDeactivated) {
@@ -505,202 +451,39 @@ export default function BoosterProfilePage() {
 
   return (
     <>
-      <header className="fixed top-0 z-50 flex h-16 w-full items-center justify-between border-b border-white/5 bg-slate-950/70 px-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] backdrop-blur-xl">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400 italic transition hover:text-cyan-300"
-          >
-            ZENITH BOOSTER
-          </Link>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="relative z-[55]">
-            <button
-              type="button"
-              onClick={() => {
-                setIsProfileMenuOpen(false);
-                setIsNotificationsPanelOpen((current) => !current);
-              }}
-              className={`transition-all duration-200 active:scale-95 ${
-                isNotificationsOn ? "text-cyan-300" : "text-red-400 hover:text-red-300"
-              }`}
-            >
-              {isNotificationsOn ? <Bell className="h-6 w-6" /> : <BellOff className="h-6 w-6" />}
-
-              {unreadNotificationCount > 0 ? (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
-                  {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
-                </span>
-              ) : null}
-            </button>
-
-            {isNotificationsPanelOpen ? (
-              <>
-                <button
-                  type="button"
-                  aria-label="Close notifications panel"
-                  onClick={() => setIsNotificationsPanelOpen(false)}
-                  className="fixed inset-0 z-[54] cursor-default"
-                ></button>
-                <div className="ghost-border absolute right-0 top-10 z-[55] w-[320px] rounded-xl border border-white/10 bg-surface-container p-4 shadow-2xl">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h3 className="font-headline text-sm font-bold uppercase tracking-wider text-on-surface">
-                      Notifications
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={handleMarkNotificationsRead}
-                      className="text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary-container"
-                    >
-                      Mark Read
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="rounded-md border border-white/5 bg-surface-container-low px-3 py-2">
-                      <p className="text-xs font-semibold text-on-surface">New boost request assigned</p>
-                      <p className="text-[10px] uppercase tracking-wider text-on-surface-variant">
-                        Valorant • 2 min ago
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-white/5 bg-surface-container-low px-3 py-2">
-                      <p className="text-xs font-semibold text-on-surface">Client sent you a message</p>
-                      <p className="text-[10px] uppercase tracking-wider text-on-surface-variant">
-                        Inbox • 14 min ago
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleNotificationToggle}
-                    className={`mt-3 flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-widest ${
-                      isNotificationsOn
-                        ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20"
-                        : "border-red-500/30 bg-red-500/15 text-red-300 hover:bg-red-500/25"
-                    }`}
-                  >
-                    {isNotificationsOn ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-                    {isNotificationsOn ? "Mute Notifications" : "Unmute Notifications"}
-                  </button>
-                </div>
-              </>
-            ) : null}
-          </div>
-          <div className="relative z-[56]">
-            <button
-              type="button"
-              onClick={() => {
-                setIsNotificationsPanelOpen(false);
-                setIsProfileMenuOpen((current) => !current);
-              }}
-              className="h-8 w-8 overflow-hidden rounded-full border border-cyan-400/30"
-            >
-              <img
-                alt="Booster Profile Avatar"
-                className="h-full w-full object-cover"
-                src={avatarUrl}
-              />
-            </button>
-
-            {isProfileMenuOpen ? (
-              <>
-                <button
-                  type="button"
-                  aria-label="Close profile menu"
-                  onClick={() => setIsProfileMenuOpen(false)}
-                  className="fixed inset-0 z-[55] cursor-default"
-                ></button>
-                <div className="ghost-border absolute right-0 top-10 z-[56] w-[220px] rounded-xl border border-white/10 bg-surface-container p-2 shadow-2xl">
-                  {["View Profile", "Settings", "Help Support", "Logout"].map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => handleProfileAction(item)}
-                      className={`w-full rounded-md px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-colors ${
-                        item === "Logout"
-                          ? "text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                          : "text-on-surface-variant hover:bg-white/10 hover:text-on-surface"
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </header>
+      <BoosterTopBar
+        avatarUrl={avatarUrl}
+        avatarAlt="Booster Profile Avatar"
+        isNotificationsOn={isNotificationsOn}
+        unreadNotificationCount={unreadNotificationCount}
+        isNotificationsPanelOpen={isNotificationsPanelOpen}
+        onToggleNotificationsPanel={() => {
+          setIsProfileMenuOpen(false);
+          setIsNotificationsPanelOpen((current) => !current);
+        }}
+        onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
+        onToggleNotifications={handleNotificationToggle}
+        onMarkNotificationsRead={handleMarkNotificationsRead}
+        notifications={notifications}
+        isProfileMenuOpen={isProfileMenuOpen}
+        onToggleProfileMenu={() => {
+          setIsNotificationsPanelOpen(false);
+          setIsProfileMenuOpen((current) => !current);
+        }}
+        onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
+        onProfileAction={handleProfileAction}
+      />
 
       {isLoggedInBooster ? (
-      <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r border-white/15 bg-[#04060a]/95 pt-20 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_24px_60px_rgba(0,0,0,0.6)] backdrop-blur-md">
-        <div className="mb-4 flex flex-col items-center border-b border-white/5 px-6 py-4">
-          <div className="ghost-border mb-2 flex h-16 w-16 items-center justify-center rounded-xl bg-surface-container-highest">
-            <Crown className="h-8 w-8 text-[#b87333]" />
-          </div>
-          <h3 className="font-headline font-bold text-on-surface">ROOKIE</h3>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">
-            Main Game: {primaryGame || "Not Set"}
-          </p>
-          <div className="mt-3 w-full space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-              <span>Elite Booster XP</span>
-              <span>0%</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
-              <div className="primary-gradient h-full w-[0%]"></div>
-            </div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-300">
-              0 / 10000 XP
-            </p>
-          </div>
-        </div>
-
-        <nav className="font-label flex grow flex-col gap-2 p-4 text-sm font-semibold tracking-wide">
-          {boosterNavLinks.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80"
-            >
-              {renderNavIcon(item.icon, "h-5 w-5")}
-              <span>{item.label}</span>
-            </a>
-          ))}
-        </nav>
-
-        <div className="font-label flex flex-col gap-2 border-t border-white/5 p-4 text-sm font-semibold">
-          <div className="mb-3 flex items-center justify-between rounded-md border border-white/10 bg-surface-container-high/60 px-2.5 py-2">
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-emerald-400" : "bg-slate-500"}`}></span>
-              <span className="text-[11px] font-semibold text-on-surface-variant">{isOnline ? "Online" : "Offline"}</span>
-            </div>
-            <button
-              type="button"
-              aria-pressed={isOnline}
-              onClick={handleToggleOnline}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                isOnline ? "bg-cyan-400/70" : "bg-outline-variant"
-              }`}
-            >
-              <span
-                className={`inline-block h-3.5 w-3.5 transform rounded-full transition ${
-                  isOnline ? "translate-x-5 bg-slate-950" : "translate-x-1 bg-on-surface-variant"
-                }`}
-              ></span>
-            </button>
-          </div>
-          <a href="#" className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent p-3 text-slate-500 transition-all duration-300 hover:translate-x-1 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300 hover:shadow-[0_0_22px_rgba(34,211,238,0.25)] active:opacity-80">
-            <HelpCircle className="h-5 w-5" />
-            <span>Support</span>
-          </a>
-        </div>
-      </aside>
+        <BoosterSidebar
+          active="dashboard"
+          isOnline={isOnline}
+          onToggleOnline={handleToggleOnline}
+          mainGame={savedPrimaryGame}
+        />
       ) : null}
 
-      <main className={`min-h-screen px-6 pb-24 pt-24 ${isLoggedInBooster ? "ml-64" : ""}`}>
+      <main className={`h-screen overflow-y-auto px-6 pb-24 pt-24 ${isLoggedInBooster ? "ml-64" : ""}`}>
         <div className="mx-auto max-w-5xl">
           <div
             className={`mb-6 rounded-lg border px-4 py-3 text-xs font-bold uppercase tracking-wider ${
@@ -746,7 +529,7 @@ export default function BoosterProfilePage() {
                     {isOnline ? "Visible to all clients" : "Hidden from all clients"}
                   </p>
                 </div>
-                <button
+                <Button
                   type="button"
                   aria-pressed={isOnline}
                   onClick={handleToggleOnline}
@@ -761,7 +544,7 @@ export default function BoosterProfilePage() {
                         : "translate-x-1 bg-on-surface-variant"
                     }`}
                   ></span>
-                </button>
+                </Button>
               </div>
             </div>
           </section>
@@ -786,20 +569,20 @@ export default function BoosterProfilePage() {
                 only.
               </p>
               <div className="flex flex-wrap gap-4">
-                <button
+                <Button
                   type="button"
                   onClick={handleAvatarUpload}
                   className="primary-gradient font-label rounded-md px-6 py-2.5 text-xs font-extrabold uppercase tracking-wider text-on-primary-fixed transition-transform active:scale-95"
                 >
                   UPLOAD Avatar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={handleAvatarRemove}
                   className="font-label rounded-md border border-white/10 bg-white/5 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-on-surface-variant transition-all hover:bg-white/10"
                 >
                   Remove
-                </button>
+                </Button>
               </div>
             </div>
           </section>
@@ -815,10 +598,10 @@ export default function BoosterProfilePage() {
 
               <form className="space-y-6" onSubmit={handleCredentialsUpdate}>
                 <div className="space-y-2">
-                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                     Booster ID
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
                     placeholder="foreign111"
                     type="text"
@@ -826,10 +609,10 @@ export default function BoosterProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                     Email Address
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
                     placeholder="medalihiza@gmail.com"
                     type="email"
@@ -837,38 +620,38 @@ export default function BoosterProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                     Country of Origin
-                  </label>
+                  </Label>
                   <div className="ghost-border flex items-center gap-2 rounded-sm bg-surface-container-lowest px-3 py-2">
-                    <input
+                    <Input
                       className="w-full border-none bg-transparent p-0 text-sm text-on-surface focus:ring-0"
                       type="text"
                       value={countryOfOrigin}
                       readOnly
                     />
-                    <button
+                    <Button
                       type="button"
                       onClick={handleOpenCountryPicker}
                       className="rounded border border-cyan-400/40 bg-cyan-400/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition-colors hover:bg-cyan-400/25"
                     >
                       Pick
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                     Bio Description
-                  </label>
-                  <textarea
+                  </Label>
+                  <Textarea
                     className="ghost-border min-h-[120px] w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
                     placeholder="Write about your professional experience, playstyle, and achievements..."
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                     Languages Spoken
-                  </label>
+                  </Label>
                   <div className="ghost-border flex w-full flex-wrap gap-2 rounded-sm bg-surface-container-lowest px-3 py-2 text-on-surface transition-all focus-within:ring-1 focus-within:ring-primary">
                     {languages.map((name) => (
                       <div
@@ -876,37 +659,37 @@ export default function BoosterProfilePage() {
                         className="flex items-center gap-1.5 rounded border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary"
                       >
                         {name}
-                        <button
+                        <Button
                           type="button"
                           onClick={() => handleRemoveLanguage(name)}
                           className="cursor-pointer text-primary/80 hover:text-white"
                         >
                           <X className="h-3.5 w-3.5" />
-                        </button>
+                        </Button>
                       </div>
                     ))}
-                    <input
+                    <Input
                       className="min-w-[80px] flex-grow border-none bg-transparent p-0 text-sm text-on-surface-variant focus:ring-0"
                       placeholder="Use Pick to add language"
                       type="text"
                       readOnly
                     />
-                    <button
+                    <Button
                       type="button"
                       onClick={handleOpenLanguagePicker}
                       className="rounded border border-cyan-400/40 bg-cyan-400/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition-colors hover:bg-cyan-400/25"
                     >
                       Pick
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div className="pt-4">
-                  <button
+                  <Button
                     type="submit"
                     className="primary-gradient font-label rounded-md px-8 py-3 text-sm font-extrabold uppercase tracking-wider text-on-primary-fixed shadow-[0_0_20px_rgba(143,245,255,0.2)] transition-transform active:scale-95"
                   >
                     Update Credentials
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
@@ -920,10 +703,10 @@ export default function BoosterProfilePage() {
               </div>
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                     Primary Game
-                  </label>
-                  <select
+                  </Label>
+                  <Select
                     className="ghost-border h-10 w-full cursor-pointer appearance-none rounded-sm border-none bg-surface-container-lowest px-4 text-xs font-bold text-on-surface transition-all focus:ring-1 focus:ring-tertiary"
                     value={primaryGame}
                     onChange={(event) => setPrimaryGame(event.target.value)}
@@ -936,13 +719,13 @@ export default function BoosterProfilePage() {
                     <option>League of Legends</option>
                     <option>Counter-Strike 2</option>
                     <option>Dota 2</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-3">
-                  <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                     Active GAMES &amp; Ranks
-                  </label>
+                  </Label>
                   <div className="flex flex-col gap-4">
                     {activeGames.map((game) => (
                       <div key={game.id} className="space-y-2">
@@ -951,8 +734,8 @@ export default function BoosterProfilePage() {
                             {game.name}
                           </div>
                           <div className="flex flex-grow justify-end">
-                            <select
-                              className="rank-select h-10 min-w-[130px] cursor-pointer rounded border border-primary/30 bg-primary/20 px-3 py-0 text-xs font-black uppercase tracking-tighter text-primary"
+                            <Select
+                              className="h-10 min-w-[130px] cursor-pointer rounded border border-primary/30 bg-primary/20 px-3 py-0 text-xs font-black uppercase tracking-tighter text-primary"
                               value={game.rank}
                               onChange={(event) => handleGameRankChange(game.id, event.target.value)}
                             >
@@ -961,17 +744,17 @@ export default function BoosterProfilePage() {
                                   {rank}
                                 </option>
                               ))}
-                            </select>
+                            </Select>
                           </div>
-                          <button
+                          <Button
                             type="button"
                             onClick={() => handleCloseGame(game.id)}
                             className="cursor-pointer px-1 text-on-surface-variant transition-colors hover:text-error"
                           >
                             <X className="h-4 w-4" />
-                          </button>
+                          </Button>
                         </div>
-                        <input
+                        <Input
                           className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest/50 px-3 py-2 text-[10px] italic text-on-surface-variant transition-all focus:ring-1 focus:ring-tertiary"
                           placeholder="Add in-game ID"
                           type="text"
@@ -981,14 +764,14 @@ export default function BoosterProfilePage() {
                       </div>
                     ))}
 
-                    <button
+                    <Button
                       type="button"
                       onClick={handleOpenGamePicker}
                       className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-md border border-white/5 bg-surface-container-highest px-3 py-2.5 text-xs font-bold text-on-surface-variant transition-colors hover:bg-white/10"
                     >
                       <Plus className="h-4 w-4" />
                       Add Game
-                    </button>
+                    </Button>
 
                     {availableGames.length === 0 ? (
                       <div className="ghost-border rounded-lg bg-surface-container-lowest/70 px-3 py-2 text-[10px] uppercase tracking-wider text-on-surface-variant">
@@ -999,13 +782,13 @@ export default function BoosterProfilePage() {
                 </div>
 
                 <div className="pt-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={handleSaveExpertise}
                     className="w-full rounded-md border border-tertiary/20 bg-transparent px-6 py-3 font-label text-xs font-bold uppercase tracking-widest text-tertiary transition-all hover:border-tertiary hover:bg-tertiary/5"
                   >
                     Save
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1031,10 +814,10 @@ export default function BoosterProfilePage() {
                       {social.platform.slice(0, 2)}
                     </div>
                     <div className="flex-grow">
-                      <label className="mb-1 block text-[10px] font-bold uppercase text-on-surface-variant">
+                      <Label className="mb-1 block text-[10px] font-bold uppercase text-on-surface-variant">
                         {social.platform}
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         className="w-full border-none bg-transparent p-0 text-sm text-on-surface focus:ring-0"
                         placeholder="Profile username or URL"
                         type="text"
@@ -1044,24 +827,24 @@ export default function BoosterProfilePage() {
                         }
                       />
                     </div>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => handleRemoveSocialLink(social.id)}
                       className="rounded p-1 text-on-surface-variant transition-colors hover:bg-white/10 hover:text-error"
                     >
                       <X className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
 
-                <button
+                <Button
                   type="button"
                   onClick={handleOpenSocialPicker}
                   className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-white/5 bg-surface-container-highest px-3 py-2.5 text-xs font-bold text-on-surface-variant transition-colors hover:bg-white/10"
                 >
                   <Plus className="h-4 w-4" />
                   Add Connection
-                </button>
+                </Button>
 
                 {availableSocialPlatforms.length === 0 ? (
                   <div className="ghost-border rounded-lg bg-surface-container-lowest/70 px-3 py-2 text-[10px] uppercase tracking-wider text-on-surface-variant">
@@ -1083,7 +866,7 @@ export default function BoosterProfilePage() {
                   Ensure your account remains fortified with a rotating high-entropy password.
                 </p>
                 <div className="space-y-4">
-                  <input
+                  <Input
                     className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-secondary"
                     placeholder="Current Password"
                     type="password"
@@ -1093,7 +876,7 @@ export default function BoosterProfilePage() {
                     }
                   />
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <input
+                    <Input
                       className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-secondary"
                       placeholder="New Password"
                       type="password"
@@ -1102,7 +885,7 @@ export default function BoosterProfilePage() {
                         setPasswordFields((current) => ({ ...current, next: event.target.value }))
                       }
                     />
-                    <input
+                    <Input
                       className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-secondary"
                       placeholder="Confirm New Password"
                       type="password"
@@ -1113,13 +896,13 @@ export default function BoosterProfilePage() {
                     />
                   </div>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={handleChangePassword}
                   className="mt-4 w-full rounded-md border border-secondary/20 bg-transparent px-6 py-3 font-label text-xs font-bold uppercase tracking-widest text-secondary transition-all hover:border-secondary hover:bg-secondary/5"
                 >
                   Change Password
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -1173,13 +956,13 @@ export default function BoosterProfilePage() {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
                   Global Terminal Security: Optimal
                 </p>
-                <button
+                <Button
                   type="button"
                   onClick={handleToggleLog}
                   className="text-[10px] font-bold uppercase tracking-tighter text-primary hover:text-primary-container"
                 >
                   {isLogOpen ? "Hide Log History <" : "View Log History >"}
-                </button>
+                </Button>
               </div>
 
               {isLogOpen ? (
@@ -1199,356 +982,259 @@ export default function BoosterProfilePage() {
                   Permanently remove your access and clear all tactical data from Zenith servers.
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={handleTerminateAccount}
                 className="rounded-md border border-error/20 bg-error/10 px-6 py-3 font-label text-xs font-black uppercase tracking-widest text-error transition-all hover:bg-error/20"
               >
                 {isDeactivated ? "Reactivate Account" : "Terminate Account"}
-              </button>
+              </Button>
             </div>
           </section>
         </div>
       </main>
 
-      <div
-        className={`fixed inset-0 z-[60] ${
-          isGamePickerOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
+      <PickerSheet
+        open={isGamePickerOpen}
+        onOpenChange={setIsGamePickerOpen}
+        title="Add Supported Game"
+        zIndexClassName="z-[60]"
+        panelClassName="h-full w-full max-w-md border-l border-white/10 bg-surface-container px-6 py-8 shadow-2xl"
       >
-        <button
-          type="button"
-          onClick={() => setIsGamePickerOpen(false)}
-          aria-label="Close game picker overlay"
-          className={`absolute inset-0 bg-black/60 transition-opacity ${
-            isGamePickerOpen ? "opacity-100" : "opacity-0"
-          }`}
-        ></button>
+        {availableGames.length > 0 ? (
+          <>
+            <div className="mb-6 space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                Choose Game
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                {availableGames.map((game) => (
+                  <Button
+                    key={game}
+                    type="button"
+                    onClick={() => handleGameSelectionChange(game)}
+                    className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
+                      gameToAdd === game
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
+                    }`}
+                  >
+                    {game}
+                  </Button>
+                ))}
+              </div>
+            </div>
 
-        <aside
-          className={`absolute right-0 top-0 h-full w-full max-w-md border-l border-white/10 bg-surface-container px-6 py-8 shadow-2xl transition-transform duration-300 ${
-            isGamePickerOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="font-headline text-2xl font-bold text-on-surface">Add Supported Game</h3>
-            <button
-              type="button"
-              onClick={() => setIsGamePickerOpen(false)}
-              className="rounded-md border border-white/10 p-1 text-on-surface-variant transition-colors hover:text-on-surface"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="mb-8 space-y-2">
+              <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                Choose Rank
+              </Label>
+              <Select
+                className="h-10 w-full cursor-pointer rounded border border-primary/30 bg-primary/20 px-3 py-0 text-xs font-black uppercase tracking-tighter text-primary"
+                value={rankToAdd}
+                onChange={(event) => setRankToAdd(event.target.value)}
+              >
+                {(gameRanks[gameToAdd] ?? []).map((rank) => (
+                  <option key={`${gameToAdd}-${rank}`} className="bg-background text-on-surface">
+                    {rank}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                onClick={() => setIsGamePickerOpen(false)}
+                className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleAddGameFromPicker}
+                className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
+              >
+                Add Game
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="ghost-border rounded-lg bg-surface-container-low p-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+            No more supported games available to add.
           </div>
+        )}
+      </PickerSheet>
 
-          {availableGames.length > 0 ? (
-            <>
-              <div className="mb-6 space-y-3">
+      <PickerSheet
+        open={isLanguagePickerOpen}
+        onOpenChange={setIsLanguagePickerOpen}
+        title="Add Language"
+        zIndexClassName="z-[65]"
+      >
+        {availableLanguages.length > 0 ? (
+          <>
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+              <div className="mb-2 space-y-3">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-                  Choose Game
+                  Top 20 Used Languages
                 </p>
                 <div className="grid grid-cols-1 gap-2">
-                  {availableGames.map((game) => (
-                    <button
-                      key={game}
+                  {availableLanguages.map((language) => (
+                    <Button
+                      key={language}
                       type="button"
-                      onClick={() => handleGameSelectionChange(game)}
+                      onClick={() => setLanguageToAdd(language)}
                       className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
-                        gameToAdd === game
+                        languageToAdd === language
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
                       }`}
                     >
-                      {game}
-                    </button>
+                      {language}
+                    </Button>
                   ))}
                 </div>
               </div>
+            </div>
 
-              <div className="mb-8 space-y-2">
-                <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                  Choose Rank
-                </label>
-                <select
-                  className="rank-select h-10 w-full cursor-pointer rounded border border-primary/30 bg-primary/20 px-3 py-0 text-xs font-black uppercase tracking-tighter text-primary"
-                  value={rankToAdd}
-                  onChange={(event) => setRankToAdd(event.target.value)}
-                >
-                  {(gameRanks[gameToAdd] ?? []).map((rank) => (
-                    <option key={`${gameToAdd}-${rank}`} className="bg-background text-on-surface">
-                      {rank}
-                    </option>
+            <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
+              <Button
+                type="button"
+                onClick={() => setIsLanguagePickerOpen(false)}
+                className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleAddLanguageFromPicker}
+                className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
+              >
+                Add Language
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="ghost-border rounded-lg bg-surface-container-low p-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+            All supported languages already added.
+          </div>
+        )}
+      </PickerSheet>
+
+      <PickerSheet
+        open={isSocialPickerOpen}
+        onOpenChange={setIsSocialPickerOpen}
+        title="Link Platform"
+        zIndexClassName="z-[66]"
+      >
+        {availableSocialPlatforms.length > 0 ? (
+          <>
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                  Supported Platforms
+                </p>
+                <div className="grid grid-cols-1 gap-2">
+                  {availableSocialPlatforms.map((platform) => (
+                    <Button
+                      key={platform}
+                      type="button"
+                      onClick={() => setSocialPlatformToAdd(platform)}
+                      className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
+                        socialPlatformToAdd === platform
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
+                      }`}
+                    >
+                      {platform}
+                    </Button>
                   ))}
-                </select>
-              </div>
+                </div>
 
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsGamePickerOpen(false)}
-                  className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddGameFromPicker}
-                  className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
-                >
-                  Add Game
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="ghost-border rounded-lg bg-surface-container-low p-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-              No more supported games available to add.
-            </div>
-          )}
-        </aside>
-      </div>
-
-      <div
-        className={`fixed inset-0 z-[65] ${
-          isLanguagePickerOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={() => setIsLanguagePickerOpen(false)}
-          aria-label="Close language picker overlay"
-          className={`absolute inset-0 bg-black/60 transition-opacity ${
-            isLanguagePickerOpen ? "opacity-100" : "opacity-0"
-          }`}
-        ></button>
-
-        <aside
-          className={`absolute right-0 top-0 h-full w-full max-w-md border-l border-white/10 bg-surface-container px-6 py-8 shadow-2xl transition-transform duration-300 ${
-            isLanguagePickerOpen ? "translate-x-0" : "translate-x-full"
-          } flex flex-col`}
-        >
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="font-headline text-2xl font-bold text-on-surface">Add Language</h3>
-            <button
-              type="button"
-              onClick={() => setIsLanguagePickerOpen(false)}
-              className="rounded-md border border-white/10 p-1 text-on-surface-variant transition-colors hover:text-on-surface"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {availableLanguages.length > 0 ? (
-            <>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                <div className="mb-2 space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-                    Top 20 Used Languages
-                  </p>
-                  <div className="grid grid-cols-1 gap-2">
-                    {availableLanguages.map((language) => (
-                      <button
-                        key={language}
-                        type="button"
-                        onClick={() => setLanguageToAdd(language)}
-                        className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
-                          languageToAdd === language
-                            ? "border-primary/40 bg-primary/10 text-primary"
-                            : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
-                        }`}
-                      >
-                        {language}
-                      </button>
-                    ))}
-                  </div>
+                <div className="space-y-2 pt-4">
+                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    Profile Username / Link
+                  </Label>
+                  <Input
+                    className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-sm text-on-surface transition-all focus:ring-1 focus:ring-primary"
+                    placeholder="example: @YourHandle or profile URL"
+                    type="text"
+                    value={socialUsernameToAdd}
+                    onChange={(event) => setSocialUsernameToAdd(event.target.value)}
+                  />
                 </div>
               </div>
-
-              <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsLanguagePickerOpen(false)}
-                  className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddLanguageFromPicker}
-                  className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
-                >
-                  Add Language
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="ghost-border rounded-lg bg-surface-container-low p-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-              All supported languages already added.
             </div>
-          )}
-        </aside>
-      </div>
 
-      <div
-        className={`fixed inset-0 z-[66] ${
-          isSocialPickerOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
+            <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
+              <Button
+                type="button"
+                onClick={() => setIsSocialPickerOpen(false)}
+                className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleAddSocialFromPicker}
+                className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
+              >
+                Link Profile
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="ghost-border rounded-lg bg-surface-container-low p-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+            All supported platforms are already linked.
+          </div>
+        )}
+      </PickerSheet>
+
+      <PickerSheet
+        open={isCountryPickerOpen}
+        onOpenChange={setIsCountryPickerOpen}
+        title="Country of Origin"
+        zIndexClassName="z-[67]"
       >
-        <button
-          type="button"
-          onClick={() => setIsSocialPickerOpen(false)}
-          aria-label="Close social picker overlay"
-          className={`absolute inset-0 bg-black/60 transition-opacity ${
-            isSocialPickerOpen ? "opacity-100" : "opacity-0"
-          }`}
-        ></button>
-
-        <aside
-          className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-surface-container px-6 py-8 shadow-2xl transition-transform duration-300 ${
-            isSocialPickerOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="font-headline text-2xl font-bold text-on-surface">Link Platform</h3>
-            <button
-              type="button"
-              onClick={() => setIsSocialPickerOpen(false)}
-              className="rounded-md border border-white/10 p-1 text-on-surface-variant transition-colors hover:text-on-surface"
-            >
-              <X className="h-5 w-5" />
-            </button>
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 gap-2">
+            {supportedCountries.map((country) => (
+              <Button
+                key={country}
+                type="button"
+                onClick={() => setCountryToSet(country)}
+                className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
+                  countryToSet === country
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                {country}
+              </Button>
+            ))}
           </div>
+        </div>
 
-          {availableSocialPlatforms.length > 0 ? (
-            <>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                <div className="space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-                    Supported Platforms
-                  </p>
-                  <div className="grid grid-cols-1 gap-2">
-                    {availableSocialPlatforms.map((platform) => (
-                      <button
-                        key={platform}
-                        type="button"
-                        onClick={() => setSocialPlatformToAdd(platform)}
-                        className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
-                          socialPlatformToAdd === platform
-                            ? "border-primary/40 bg-primary/10 text-primary"
-                            : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
-                        }`}
-                      >
-                        {platform}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="space-y-2 pt-4">
-                    <label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                      Profile Username / Link
-                    </label>
-                    <input
-                      className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-sm text-on-surface transition-all focus:ring-1 focus:ring-primary"
-                      placeholder="example: @YourHandle or profile URL"
-                      type="text"
-                      value={socialUsernameToAdd}
-                      onChange={(event) => setSocialUsernameToAdd(event.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsSocialPickerOpen(false)}
-                  className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddSocialFromPicker}
-                  className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
-                >
-                  Link Profile
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="ghost-border rounded-lg bg-surface-container-low p-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-              All supported platforms are already linked.
-            </div>
-          )}
-        </aside>
-      </div>
-
-      <div
-        className={`fixed inset-0 z-[67] ${
-          isCountryPickerOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={() => setIsCountryPickerOpen(false)}
-          aria-label="Close country picker overlay"
-          className={`absolute inset-0 bg-black/60 transition-opacity ${
-            isCountryPickerOpen ? "opacity-100" : "opacity-0"
-          }`}
-        ></button>
-
-        <aside
-          className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-surface-container px-6 py-8 shadow-2xl transition-transform duration-300 ${
-            isCountryPickerOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="font-headline text-2xl font-bold text-on-surface">Country of Origin</h3>
-            <button
-              type="button"
-              onClick={() => setIsCountryPickerOpen(false)}
-              className="rounded-md border border-white/10 p-1 text-on-surface-variant transition-colors hover:text-on-surface"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <div className="grid grid-cols-1 gap-2">
-              {supportedCountries.map((country) => (
-                <button
-                  key={country}
-                  type="button"
-                  onClick={() => setCountryToSet(country)}
-                  className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${
-                    countryToSet === country
-                      ? "border-primary/40 bg-primary/10 text-primary"
-                      : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
-                  }`}
-                >
-                  {country}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
-            <button
-              type="button"
-              onClick={() => setIsCountryPickerOpen(false)}
-              className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSetCountryFromPicker}
-              className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
-            >
-              Set Country
-            </button>
-          </div>
-        </aside>
-      </div>
+        <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
+          <Button
+            type="button"
+            onClick={() => setIsCountryPickerOpen(false)}
+            className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSetCountryFromPicker}
+            className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed"
+          >
+            Set Country
+          </Button>
+        </div>
+      </PickerSheet>
     </>
   );
 }
+
+
