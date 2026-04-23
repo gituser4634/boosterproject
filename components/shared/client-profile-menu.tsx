@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileAvatarButton } from "@/components/booster/profile-avatar-button";
 import { Button } from "@/components/ui/button";
-import { tempAuthLogout } from "@/lib/temp-auth-client";
 
 type ClientProfileMenuProps = {
   avatarUrl: string;
@@ -16,7 +15,6 @@ export function ClientProfileMenu({ avatarUrl, alt = "Client profile avatar" }: 
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = async () => {
-    await tempAuthLogout();
     router.push("/");
   };
 

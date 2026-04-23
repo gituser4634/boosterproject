@@ -36,7 +36,6 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useBoosterAvatar } from "@/lib/use-booster-avatar";
-import { tempAuthLogout } from "@/lib/temp-auth-client";
 import {
   defaultAvatar,
   gameRanks,
@@ -99,8 +98,8 @@ export default function BoosterProfilePage() {
     confirm: "",
   });
   const notifications: NotificationItem[] = [
-    { id: "request", title: "New boost request assigned", meta: "Valorant • 2 min ago" },
-    { id: "message", title: "Client sent you a message", meta: "Inbox • 14 min ago" },
+    { id: "request", title: "New boost request assigned", meta: "Valorant ��� 2 min ago" },
+    { id: "message", title: "Client sent you a message", meta: "Inbox ��� 14 min ago" },
   ];
 
   const boosterNavLinks = [
@@ -169,7 +168,6 @@ export default function BoosterProfilePage() {
     }
 
     if (action === "Logout") {
-      await tempAuthLogout();
       router.push("/");
       return;
     }

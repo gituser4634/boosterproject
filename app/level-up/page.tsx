@@ -1,14 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AuthLoginModal, AuthRegisterModal, TermsModal } from "@/components/shared/auth-modals";
-import { tempAuthLogin, tempAuthRegister } from "@/lib/temp-auth-client";
 
 export default function LevelUpPage() {
-  const router = useRouter();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
@@ -16,13 +13,11 @@ export default function LevelUpPage() {
   const [registerType, setRegisterType] = useState<"booster" | "client">("client");
 
   const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
-    const result = await tempAuthLogin(payload);
-    if (!result.ok) {
-      return result;
-    }
-
-    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
-    return { ok: true };
+    void payload;
+    return {
+      ok: false,
+      message: "Temporary auth has been removed. Connect your real auth backend to enable login.",
+    };
   };
 
   const handleRegisterSubmit = async (payload: {
@@ -33,13 +28,11 @@ export default function LevelUpPage() {
     role: "booster" | "client";
     alias?: string;
   }) => {
-    const result = await tempAuthRegister(payload);
-    if (!result.ok) {
-      return result;
-    }
-
-    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
-    return { ok: true };
+    void payload;
+    return {
+      ok: false,
+      message: "Temporary auth has been removed. Connect your real auth backend to enable registration.",
+    };
   };
 
   return (

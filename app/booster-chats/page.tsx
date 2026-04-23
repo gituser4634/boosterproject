@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
 import { Input } from "@/components/ui/input";
 import { useBoosterAvatar } from "@/lib/use-booster-avatar";
-import { tempAuthLogout } from "@/lib/temp-auth-client";
 
 type TabType = "chats" | "requests";
 type MessageType = "text" | "image" | "voice";
@@ -418,7 +417,6 @@ function BoosterChatsPageContent() {
           }
 
           if (action === "Logout") {
-            await tempAuthLogout();
             router.push("/");
             return;
           }

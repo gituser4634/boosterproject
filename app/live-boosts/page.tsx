@@ -1,28 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Gamepad2, Rocket, ShieldCheck, Swords, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthLoginModal } from "@/components/shared/auth-modals";
-import { tempAuthLogin } from "@/lib/temp-auth-client";
 
 const particleIcons = [Gamepad2, Trophy, Swords, Rocket, ShieldCheck, Gamepad2, Trophy, Rocket];
 
 export default function LiveBoostsComingSoonPage() {
-  const router = useRouter();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginType, setLoginType] = useState<"booster" | "client">("booster");
 
   const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
-    const result = await tempAuthLogin(payload);
-    if (!result.ok) {
-      return result;
-    }
-
-    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
-    return { ok: true };
+    void payload;
+    return {
+      ok: false,
+      message: "Temporary auth has been removed. Connect your real auth backend to enable login.",
+    };
   };
 
   return (

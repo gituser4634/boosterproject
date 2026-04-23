@@ -1,10 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
-import { useTempAuthSession } from "@/lib/use-temp-auth-session";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 type ClientOrder = {
   id: string;
@@ -15,31 +13,10 @@ type ClientOrder = {
 };
 
 export default function ClientOrdersPage() {
-  const router = useRouter();
-  const { user, isLoading } = useTempAuthSession();
-  const [orders, setOrders] = useState<ClientOrder[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (!user || user.role !== "client") {
-      router.replace("/");
-      return;
-    }
-
-    const loadOrders = async () => {
-      const response = await fetch("/api/auth/orders", { cache: "no-store" });
-      const payload = (await response.json().catch(() => ({}))) as { orders?: ClientOrder[]; error?: string };
-      if (!response.ok) {
-        setMessage(payload.error ?? "Failed to load orders.");
-        return;
-      }
-
-      setOrders(payload.orders ?? []);
-    };
-
-    loadOrders();
-  }, [isLoading, router, user]);
+  const [orders] = useState<ClientOrder[]>([]);
+  const [message] = useState<string | null>(
+    "Temporary auth was removed. Connect your real backend to load client orders."
+  );
 
   const pendingOrders = useMemo(
     () => orders.filter((order) => order.status === "pending"),
@@ -49,10 +26,6 @@ export default function ClientOrdersPage() {
     () => orders.filter((order) => order.status === "accepted"),
     [orders]
   );
-
-  if (isLoading || !user || user.role !== "client") {
-    return <main className="min-h-screen bg-background pt-24" />;
-  }
 
   return (
     <>
@@ -69,7 +42,9 @@ export default function ClientOrdersPage() {
             <Link href="/client-orders" className="top-panel-link top-panel-link-active px-4 py-2 text-sm font-bold uppercase tracking-wide">Orders</Link>
           </div>
 
-          <ClientProfileMenu avatarUrl={user.avatarUrl || "/booster-pfps/default-avatar.svg"} />
+          <Button asChild type="button" variant="ghost" size="sm" className="top-panel-link px-2 py-2">
+            <Link href="/level-up">Login</Link>
+          </Button>
         </div>
       </header>
 

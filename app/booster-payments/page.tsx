@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
 import { useBoosterAvatar } from "@/lib/use-booster-avatar";
-import { tempAuthLogout } from "@/lib/temp-auth-client";
 
 type OrderRow = {
   id: string;
@@ -174,7 +173,6 @@ export default function BoosterPaymentsPage() {
           }
 
           if (action === "Logout") {
-            await tempAuthLogout();
             router.push("/");
             return;
           }

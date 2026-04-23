@@ -2,16 +2,13 @@
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { BadgeCheck, Search, Sparkles, Star, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
 import { AuthLoginModal } from "@/components/shared/auth-modals";
-import { tempAuthLogin } from "@/lib/temp-auth-client";
-import { useTempAuthSession } from "@/lib/use-temp-auth-session";
 
 type Booster = {
   id: string;
@@ -297,9 +294,7 @@ function generateBoosterRoster(total: number, reservedNames: string[]): Booster[
 }
 
 function BoosterBrowsePageContent() {
-  const router = useRouter();
-  const { user } = useTempAuthSession();
-  const isClientLoggedIn = user?.role === "client";
+  const isClientLoggedIn = false;
   const searchParams = useSearchParams();
   const [selectedGame, setSelectedGame] = useState("all");
   const [selectedRank, setSelectedRank] = useState("all");
@@ -316,13 +311,11 @@ function BoosterBrowsePageContent() {
   }, [searchParams]);
 
   const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
-    const result = await tempAuthLogin(payload);
-    if (!result.ok) {
-      return result;
-    }
-
-    router.push(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
-    return { ok: true };
+    void payload;
+    return {
+      ok: false,
+      message: "Temporary auth has been removed. Connect your real auth backend to enable login.",
+    };
   };
 
   const boosters = useMemo(() => {
@@ -430,9 +423,7 @@ function BoosterBrowsePageContent() {
                 className="h-5 w-5 opacity-90"
               />
             </a>
-            {isClientLoggedIn ? (
-              <ClientProfileMenu avatarUrl={user.avatarUrl} />
-            ) : (
+            {isClientLoggedIn ? null : (
               <Button
                 type="button"
                 variant="ghost"

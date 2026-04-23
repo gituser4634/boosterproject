@@ -25,7 +25,6 @@ import {
 import { BoosterSidebar } from "@/components/booster/shell-navigation";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
 import { useBoosterAvatar } from "@/lib/use-booster-avatar";
-import { tempAuthLogout } from "@/lib/temp-auth-client";
 
 type IncomingRequest = {
   id: string;
@@ -252,7 +251,6 @@ export default function BoosterDashboardPage() {
           }
 
           if (action === "Logout") {
-            await tempAuthLogout();
             router.push("/");
             return;
           }

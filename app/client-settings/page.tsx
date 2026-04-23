@@ -1,29 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Textarea } from "@/components/ui/textarea";
 import { FileInput } from "@/components/ui/file-input";
-import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
-import { useTempAuthSession } from "@/lib/use-temp-auth-session";
-
-type ProfileResponse = {
-  user: {
-    username: string;
-    country: string;
-    bio: string;
-    avatarUrl: string;
-  };
-};
 
 export default function ClientSettingsPage() {
-  const router = useRouter();
-  const { user, isLoading, refresh } = useTempAuthSession();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [username, setUsername] = useState("");
@@ -36,29 +22,9 @@ export default function ClientSettingsPage() {
   const [nextPassword, setNextPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (!user || user.role !== "client") {
-      router.replace("/");
-      return;
-    }
-
-    setUsername(user.username ?? "");
-    setCountry(user.country ?? "");
-    setBio(user.bio ?? "");
-    setAvatarUrl(user.avatarUrl || "/booster-pfps/default-avatar.svg");
-  }, [isLoading, router, user]);
-
   const hasUnsavedProfileChanges = useMemo(() => {
-    if (!user) return false;
-
-    return (
-      username.trim() !== (user.username ?? "") ||
-      country.trim() !== (user.country ?? "") ||
-      bio.trim() !== (user.bio ?? "") ||
-      avatarUrl !== (user.avatarUrl || "/booster-pfps/default-avatar.svg")
-    );
-  }, [avatarUrl, bio, country, username, user]);
+    return Boolean(username.trim() || country.trim() || bio.trim() || avatarUrl !== "/booster-pfps/default-avatar.svg");
+  }, [avatarUrl, bio, country, username]);
 
   const handleAvatarUploadClick = () => {
     fileInputRef.current?.click();
@@ -95,32 +61,7 @@ export default function ClientSettingsPage() {
   };
 
   const handleSaveProfile = async () => {
-    setStatusMessage(null);
-
-    if (!username.trim() || !country.trim()) {
-      setStatusMessage("Username and place of origin are required.");
-      return;
-    }
-
-    const response = await fetch("/api/auth/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: username.trim(),
-        country: country.trim(),
-        bio: bio.trim(),
-        avatarUrl,
-      }),
-    });
-
-    const payload = (await response.json().catch(() => ({}))) as { error?: string } & Partial<ProfileResponse>;
-    if (!response.ok) {
-      setStatusMessage(payload.error ?? "Failed to save profile settings.");
-      return;
-    }
-
-    setStatusMessage("Profile settings saved.");
-    await refresh();
+    setStatusMessage("Temporary auth was removed. Connect your real backend to save profile settings.");
   };
 
   const handleChangePassword = async () => {
@@ -136,27 +77,8 @@ export default function ClientSettingsPage() {
       return;
     }
 
-    const response = await fetch("/api/auth/password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPassword, nextPassword }),
-    });
-
-    const payload = (await response.json().catch(() => ({}))) as { error?: string };
-    if (!response.ok) {
-      setStatusMessage(payload.error ?? "Failed to change password.");
-      return;
-    }
-
-    setCurrentPassword("");
-    setNextPassword("");
-    setConfirmPassword("");
-    setStatusMessage("Password updated.");
+    setStatusMessage("Temporary auth was removed. Connect your real backend to change password.");
   };
-
-  if (isLoading || !user || user.role !== "client") {
-    return <main className="min-h-screen bg-background pt-24" />;
-  }
 
   return (
     <>
@@ -173,7 +95,9 @@ export default function ClientSettingsPage() {
             <Link href="/client-orders" className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide">Orders</Link>
           </div>
 
-          <ClientProfileMenu avatarUrl={user.avatarUrl || "/booster-pfps/default-avatar.svg"} />
+          <Button asChild type="button" variant="ghost" size="sm" className="top-panel-link px-2 py-2">
+            <Link href="/level-up">Login</Link>
+          </Button>
         </div>
       </header>
 

@@ -21,16 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
 import { AuthLoginModal, AuthRegisterModal, TermsModal } from "@/components/shared/auth-modals";
 import { buildBrowseSearchUrl } from "@/lib/search-url";
-import { tempAuthLogin, tempAuthRegister } from "@/lib/temp-auth-client";
-import { useTempAuthSession } from "@/lib/use-temp-auth-session";
 
 export default function StitchDesignPage() {
   const router = useRouter();
-  const { user } = useTempAuthSession();
-  const isClientLoggedIn = user?.role === "client";
+  const isClientLoggedIn = false;
   const navItems = ["Services", "Games", "About"];
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginType, setLoginType] = useState<"booster" | "client">("booster");
@@ -166,14 +162,11 @@ export default function StitchDesignPage() {
   };
 
   const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
-    const result = await tempAuthLogin(payload);
-    if (!result.ok) {
-      return result;
-    }
-
-    router.replace(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
-    router.refresh();
-    return { ok: true };
+    void payload;
+    return {
+      ok: false,
+      message: "Temporary auth has been removed. Connect your real auth backend to enable login.",
+    };
   };
 
   const handleRegisterSubmit = async (payload: {
@@ -184,14 +177,11 @@ export default function StitchDesignPage() {
     role: "booster" | "client";
     alias?: string;
   }) => {
-    const result = await tempAuthRegister(payload);
-    if (!result.ok) {
-      return result;
-    }
-
-    router.replace(payload.role === "booster" ? "/booster-dashboard" : "/booster-browse");
-    router.refresh();
-    return { ok: true };
+    void payload;
+    return {
+      ok: false,
+      message: "Temporary auth has been removed. Connect your real auth backend to enable registration.",
+    };
   };
 
   return (
@@ -310,9 +300,7 @@ export default function StitchDesignPage() {
                 </>
               ) : null}
             </div>
-            {isClientLoggedIn ? (
-              <ClientProfileMenu avatarUrl={user.avatarUrl} />
-            ) : (
+            {isClientLoggedIn ? null : (
               <Button
                 type="button"
                 onClick={() => setIsLoginOpen(true)}
