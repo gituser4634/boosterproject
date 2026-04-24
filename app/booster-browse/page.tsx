@@ -524,9 +524,10 @@ function BoosterBrowsePageContent() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
               {visibleBoosters.length > 0 ? (
                 visibleBoosters.map((booster) => (
-                  <div
+                  <Link
                     key={booster.id}
-                    className="group ghost-border overflow-hidden rounded-xl bg-surface-container-highest"
+                    href={`/booster/${booster.id}`}
+                    className="group ghost-border overflow-hidden rounded-xl bg-surface-container-highest block transition-transform hover:-translate-y-1"
                   >
                     <div className="relative h-64 overflow-hidden">
                       <img
@@ -562,7 +563,7 @@ function BoosterBrowsePageContent() {
                         <span className="text-primary">{booster.popularity}%</span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))
               ) : (
                 <div className="ghost-border rounded-xl bg-surface-container-high p-8 md:col-span-4">

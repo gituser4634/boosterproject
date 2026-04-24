@@ -89,7 +89,27 @@ function ReviewStars({ rating }: { rating: Review["rating"] }) {
   );
 }
 
-export function BoosterProfileView() {
+export interface BoosterProfileData {
+  boosterId: string;
+  username: string;
+  alias: string;
+  pfpUrl: string;
+  bio: string;
+  origin: string;
+  languages: string[];
+  joinDate: string;
+  rating: number;
+  totalOrders: number;
+  hourlyRate: number;
+  hoursPlayed: string;
+  successRate: string;
+  mainGame: string;
+  mainRank: string;
+  mainBadgeUrl: string;
+  reviews: Review[];
+}
+
+export function BoosterProfileView({ profileData }: { profileData?: BoosterProfileData }) {
   const router = useRouter();
   const isClientLoggedIn = false;
   const navItems = ["Services", "Games", "About"];
@@ -101,6 +121,27 @@ export function BoosterProfileView() {
     event.preventDefault();
     router.push(buildBrowseSearchUrl(searchScope, searchQuery));
     setIsSearchOpen(false);
+  };
+
+  // Fallback data if none is provided
+  const data: BoosterProfileData = profileData || {
+    boosterId: "commander-z",
+    username: "CommanderZ",
+    alias: "COMMANDER Z",
+    pfpUrl: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=512&q=80",
+    bio: "Professional Apex Legends player with 5+ years of competitive experience. I specialize in high-speed rank climbing, tactical awareness training, and badge attainment. My approach focuses on account safety and providing an educational experience through private streaming.",
+    origin: "Germany",
+    languages: ["English", "German", "French"],
+    joinDate: "Jan 2022",
+    rating: 4.9,
+    totalOrders: 500,
+    hourlyRate: 15.0,
+    hoursPlayed: "3K+",
+    successRate: "98%",
+    mainGame: "Apex Legends",
+    mainRank: "Apex Predator",
+    mainBadgeUrl: "https://mmonster.co/media/40/b0/a8/1715176623/apex-legends-predator-badge.webp",
+    reviews: reviews
   };
 
   return (
@@ -253,10 +294,10 @@ export function BoosterProfileView() {
                 </span>
                 <div className="flex items-center gap-1 text-primary">
                   <Star className="h-4 w-4 fill-current" />
-                  <span className="text-sm font-bold">4.9 Score</span>
+                  <span className="text-sm font-bold">{data.rating} Score</span>
                 </div>
                 <span className="text-sm text-on-surface-variant/60">•</span>
-                <span className="text-sm font-medium text-on-surface-variant">500+ Orders Completed</span>
+                <span className="text-sm font-medium text-on-surface-variant">{data.totalOrders}+ Orders Completed</span>
               </div>
 
               <div className="mb-8 flex flex-col gap-8 md:flex-row md:items-center">
@@ -264,25 +305,25 @@ export function BoosterProfileView() {
                   <div className="absolute -inset-2 rounded-3xl bg-gradient-to-tr from-primary via-secondary to-tertiary opacity-30 blur-xl"></div>
                   <div className="relative h-full w-full overflow-hidden rounded-[2rem] border border-white/20 bg-surface-container-high shadow-2xl">
                     <img
-                      alt="Commander Z Profile"
+                      alt={`${data.alias} Profile`}
                       className="h-full w-full object-cover transition-transform duration-500 hover:scale-110"
-                      src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=512&q=80"
+                      src={data.pfpUrl}
                     />
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-4">
                   <h1 className="font-headline text-6xl font-bold leading-[0.9] tracking-tighter text-on-surface md:text-8xl">
-                    COMMANDER <span className="italic text-primary">Z</span>
+                    <span className="uppercase">{data.alias}</span>
                   </h1>
 
                   <div className="flex items-center gap-3">
                     <div className="min-w-[80px] rounded-xl border border-primary/20 bg-surface-container-high/60 px-4 py-2 text-center backdrop-blur-md">
-                      <p className="font-headline text-xl font-bold leading-none text-primary">3K+</p>
+                      <p className="font-headline text-xl font-bold leading-none text-primary">{data.hoursPlayed}</p>
                       <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Hours</p>
                     </div>
                     <div className="min-w-[80px] rounded-xl border border-secondary/20 bg-surface-container-high/60 px-4 py-2 text-center backdrop-blur-md">
-                      <p className="font-headline text-xl font-bold leading-none text-secondary">98%</p>
+                      <p className="font-headline text-xl font-bold leading-none text-secondary">{data.successRate}</p>
                       <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Success</p>
                     </div>
                   </div>
@@ -293,11 +334,11 @@ export function BoosterProfileView() {
                 <div className="flex items-center gap-3 rounded-xl border border-outline-variant/40 bg-surface-container/80 p-3 backdrop-blur-md">
                   <img
                     className="h-12 w-12 object-contain"
-                    alt="Apex predator badge"
-                    src="https://mmonster.co/media/40/b0/a8/1715176623/apex-legends-predator-badge.webp"
+                    alt={`${data.mainGame} badge`}
+                    src={data.mainBadgeUrl}
                   />
                   <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Apex Legends - Apex Predator
+                    {data.mainGame} - {data.mainRank}
                   </p>
                 </div>
 
@@ -313,7 +354,7 @@ export function BoosterProfileView() {
                 <div>
                   <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Starting At</p>
                   <div className="flex items-baseline gap-1">
-                    <span className="font-headline text-4xl font-bold text-primary">$15.00</span>
+                    <span className="font-headline text-4xl font-bold text-primary">${data.hourlyRate.toFixed(2)}</span>
                     <span className="text-sm uppercase text-on-surface-variant">/hr</span>
                   </div>
                 </div>
@@ -350,7 +391,7 @@ export function BoosterProfileView() {
             <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-8">
               <h2 className="font-headline mb-4 text-2xl font-bold uppercase tracking-tight text-primary">Booster Bio</h2>
               <p className="mb-4 leading-relaxed text-on-surface-variant">
-                Professional Apex Legends player with 5+ years of competitive experience. I specialize in high-speed rank climbing, tactical awareness training, and badge attainment. My approach focuses on account safety and providing an educational experience through private streaming.
+                {data.bio}
               </p>
               <div className="flex flex-wrap gap-4">
               </div>
@@ -360,8 +401,8 @@ export function BoosterProfileView() {
               <div>
                 <h2 className="font-headline mb-2 text-4xl font-bold tracking-tight">Customer Reviews</h2>
                 <div className="flex items-center gap-4">
-                  <ReviewStars rating={4} />
-                  <span className="text-sm font-medium text-on-surface-variant">Based on 342 verified orders</span>
+                  <ReviewStars rating={Math.round(data.rating) as 4 | 5} />
+                  <span className="text-sm font-medium text-on-surface-variant">Based on {data.totalOrders} verified orders</span>
                 </div>
               </div>
               <Button variant="ghost" className="text-xs font-bold uppercase tracking-widest text-secondary hover:text-secondary-fixed">
@@ -371,7 +412,7 @@ export function BoosterProfileView() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {reviews.map((review) => (
+              {data.reviews.map((review) => (
                 <article key={review.id} className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-6 transition-colors hover:bg-surface-container">
                   <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -405,21 +446,21 @@ export function BoosterProfileView() {
                     <MapPin className="h-3.5 w-3.5" />
                     Account Based In
                   </span>
-                  <span className="text-sm font-bold text-on-surface">Germany</span>
+                  <span className="text-sm font-bold text-on-surface">{data.origin}</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-outline-variant/20 pb-2">
                   <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
                     <Calendar className="h-3.5 w-3.5" />
                     Member Since
                   </span>
-                  <span className="text-sm font-bold text-on-surface">Jan 2022</span>
+                  <span className="text-sm font-bold text-on-surface">{data.joinDate}</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-outline-variant/20 pb-2">
                   <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
                     <Languages className="h-3.5 w-3.5" />
                     Languages
                   </span>
-                  <span className="text-sm font-bold text-on-surface">English, German, French</span>
+                  <span className="text-sm font-bold text-on-surface">{data.languages.join(", ")}</span>
                 </div>
               </div>
             </div>
