@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { signIn } from "next-auth/react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -61,7 +62,7 @@ export default function StitchDesignPage() {
     },
   ];
 
-  const boosters = [
+  const [boosters, setBoosters] = useState([
     {
       name: "MOHAMED123",
       game: "Apex Legends",
@@ -102,7 +103,24 @@ export default function StitchDesignPage() {
       image:
         "https://scontent.ftun15-1.fna.fbcdn.net/v/t39.30808-1/462228392_2496981260655405_7587418930506211631_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=110&ccb=1-7&_nc_sid=e99d92&_nc_ohc=2WP56qrdVRsQ7kNvwFWkYS1&_nc_oc=Adoq-ZuUDnBhCQbyAR9VqREYcSxy5LvOkJlDh0N84iYLiDROjba75ybNbZY9hlt-tko&_nc_zt=24&_nc_ht=scontent.ftun15-1.fna&_nc_gid=mhkCClg0bo0Nr3kTbd-DLg&_nc_ss=7a3a8&oh=00_Af0mTktaRLpe0cPJdYydbfjfpXr8CNbc7S3pXGW71HVz1w&oe=69E1BA45",
     },
-  ];
+  ]);
+
+  useEffect(() => {
+    const fetchTopBoosters = async () => {
+      try {
+        const response = await fetch("/api/boosters?limit=4");
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setBoosters(data);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch top boosters:", error);
+      }
+    };
+    fetchTopBoosters();
+  }, []);
 
   const reviews = [
     {
@@ -162,11 +180,48 @@ export default function StitchDesignPage() {
   };
 
   const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
-    void payload;
-    return {
-      ok: false,
-      message: "Temporary auth has been removed. Connect your real auth backend to enable login.",
-    };
+    try {
+      // Step 1: Verify the role matches the selected tab
+      const roleCheckRes = await fetch("/api/auth/verify-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: payload.email }),
+      });
+
+      if (roleCheckRes.ok) {
+        const { role } = await roleCheckRes.json();
+        if (role.toLowerCase() !== payload.role.toLowerCase()) {
+          return {
+            ok: false,
+            message: `This user is registered as a ${role.toLowerCase()}`,
+          };
+        }
+      }
+
+      // Step 2: Proceed with NextAuth login
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: payload.email,
+        password: payload.password,
+      });
+
+      if (result?.error) {
+        return { ok: false, message: "Invalid email or password." };
+      }
+
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      const role = data.user?.role as string;
+
+      if (role === "BOOSTER") {
+        window.location.href = "/booster-profile";
+      } else {
+        window.location.href = "/client-settings";
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "Network error. Please try again." };
+    }
   };
 
   const handleRegisterSubmit = async (payload: {
@@ -175,13 +230,27 @@ export default function StitchDesignPage() {
     country: string;
     password: string;
     role: "booster" | "client";
-    alias?: string;
+    displayName?: string;
   }) => {
-    void payload;
-    return {
-      ok: false,
-      message: "Temporary auth has been removed. Connect your real auth backend to enable registration.",
-    };
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: payload.username,
+          email: payload.email,
+          password: payload.password,
+          role: payload.role.toUpperCase(),
+          displayName: payload.displayName,
+          country: payload.country,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { ok: false, message: data.error ?? "Registration failed." };
+      return { ok: true, message: "Account created! You can now log in." };
+    } catch {
+      return { ok: false, message: "Network error. Please try again." };
+    }
   };
 
   return (
@@ -422,9 +491,10 @@ export default function StitchDesignPage() {
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
               {boosters.map((booster) => (
-                <div
-                  key={booster.name}
-                  className="group ghost-border overflow-hidden rounded-xl bg-surface-container-highest"
+                <Link
+                  key={booster.id || booster.name}
+                  href={booster.id ? `/booster/${booster.id}` : "/booster-browse"}
+                  className="group ghost-border overflow-hidden rounded-xl bg-surface-container-highest block transition-transform hover:-translate-y-1"
                 >
                   <div className="relative h-64 overflow-hidden">
                     <img
@@ -456,7 +526,7 @@ export default function StitchDesignPage() {
                       <span className="text-sm font-bold uppercase tracking-tight">{booster.rank}</span>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

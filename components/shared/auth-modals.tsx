@@ -169,7 +169,7 @@ type RegisterModalProps = {
     country: string;
     password: string;
     role: UserType;
-    alias?: string;
+    displayName?: string;
   }) => Promise<{ ok: boolean; message?: string }>;
   onOpenTerms: () => void;
   panelClassName?: string;
@@ -184,7 +184,7 @@ export function AuthRegisterModal({
   onOpenTerms,
   panelClassName = registerPanelClassName,
 }: RegisterModalProps) {
-  const [alias, setAlias] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("");
@@ -203,8 +203,8 @@ export function AuthRegisterModal({
       return;
     }
 
-    if (registerType === "booster" && !alias.trim()) {
-      setStatusMessage("Alias is required for booster registration.");
+    if (!displayName.trim()) {
+      setStatusMessage("Display name is required.");
       return;
     }
 
@@ -225,7 +225,7 @@ export function AuthRegisterModal({
       country: country.trim(),
       password,
       role: registerType,
-      alias: registerType === "booster" ? alias.trim() : undefined,
+      displayName: displayName.trim(),
     });
     setIsSubmitting(false);
 
@@ -287,12 +287,15 @@ export function AuthRegisterModal({
         </div>
 
         <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-          {registerType === "booster" ? (
-            <div>
-              <Label>Alias</Label>
-              <Input type="text" placeholder="Your alias" value={alias} onChange={(event) => setAlias(event.target.value)} />
-            </div>
-          ) : null}
+          <div>
+            <Label>Display Name</Label>
+            <Input
+              type="text"
+              placeholder="Your public display name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+            />
+          </div>
 
           <div>
             <Label>Username</Label>

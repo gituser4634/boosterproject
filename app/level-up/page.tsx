@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { AuthLoginModal, AuthRegisterModal, TermsModal } from "@/components/shared/auth-modals";
 
@@ -13,11 +14,49 @@ export default function LevelUpPage() {
   const [registerType, setRegisterType] = useState<"booster" | "client">("client");
 
   const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
-    void payload;
-    return {
-      ok: false,
-      message: "Temporary auth has been removed. Connect your real auth backend to enable login.",
-    };
+    try {
+      // Step 1: Verify the role matches the selected tab
+      const roleCheckRes = await fetch("/api/auth/verify-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: payload.email }),
+      });
+
+      if (roleCheckRes.ok) {
+        const { role } = await roleCheckRes.json();
+        if (role.toLowerCase() !== payload.role.toLowerCase()) {
+          return {
+            ok: false,
+            message: `This user is registered as a ${role.toLowerCase()}`,
+          };
+        }
+      }
+
+      // Step 2: Proceed with NextAuth login
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: payload.email,
+        password: payload.password,
+      });
+
+      if (result?.error) {
+        return { ok: false, message: "Invalid email or password." };
+      }
+
+      // Check the role from /api/auth/me to redirect appropriately
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      const role = data.user?.role as string;
+
+      if (role === "BOOSTER") {
+        window.location.href = "/booster-profile";
+      } else {
+        window.location.href = "/client-settings";
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "Network error. Please try again." };
+    }
   };
 
   const handleRegisterSubmit = async (payload: {
@@ -26,14 +65,29 @@ export default function LevelUpPage() {
     country: string;
     password: string;
     role: "booster" | "client";
-    alias?: string;
+    displayName?: string;
   }) => {
-    void payload;
-    return {
-      ok: false,
-      message: "Temporary auth has been removed. Connect your real auth backend to enable registration.",
-    };
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: payload.username,
+          email: payload.email,
+          password: payload.password,
+          role: payload.role.toUpperCase(),
+          displayName: payload.displayName,
+          country: payload.country,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { ok: false, message: data.error ?? "Registration failed." };
+      return { ok: true, message: "Account created! You can now log in." };
+    } catch {
+      return { ok: false, message: "Network error. Please try again." };
+    }
   };
+
 
   return (
     <>

@@ -258,39 +258,8 @@ const DEFAULT_BOOSTERS: Booster[] = [
 ];
 
 function generateBoosterRoster(total: number, reservedNames: string[]): Booster[] {
-  const random = createSeededRandom(20260420);
-  const usernames = new Set<string>(reservedNames.map((name) => name.toUpperCase()));
-
-  const makeUsername = (index: number) => {
-    let username = "";
-    while (!username || usernames.has(username)) {
-      const prefix = pickRandom(NAME_PREFIXES, random);
-      const suffix = pickRandom(NAME_SUFFIXES, random);
-      const serial = Math.floor(random() * 9000) + 1000;
-      const connector = random() > 0.65 ? "_" : random() > 0.35 ? "" : "x";
-      username = `${prefix}${connector}${suffix}${serial}${index % 3 === 0 ? "" : ""}`.toUpperCase();
-    }
-    usernames.add(username);
-    return username;
-  };
-
-  return Array.from({ length: total }).map((_, index) => {
-    const gameData = pickRandom(GAME_RANK_POOL, random);
-    const rankData = pickRandom(gameData.ranks, random);
-
-    return {
-      id: `booster-${index + 1}`,
-      name: makeUsername(index),
-      game: gameData.game,
-      rating: (4.3 + random() * 0.7).toFixed(1),
-      rank: rankData.label,
-      rankIcon: gameData.icon,
-      popularity: Math.floor(68 + random() * 32),
-      rankValue: rankData.value,
-      live: random() > 0.68,
-      image: getGameImage(gameData.game, random),
-    };
-  });
+  // Keeping this as a potential fallback or for mock data if needed
+  return [];
 }
 
 function BoosterBrowsePageContent() {
@@ -318,9 +287,31 @@ function BoosterBrowsePageContent() {
     };
   };
 
-  const boosters = useMemo(() => {
-    const generated = generateBoosterRoster(32, DEFAULT_BOOSTERS.map((booster) => booster.name));
-    return [...DEFAULT_BOOSTERS, ...generated];
+  const [boosters, setBoosters] = useState<Booster[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBoosters = async () => {
+      try {
+        const response = await fetch("/api/boosters");
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setBoosters(data);
+          } else {
+            // Fallback to defaults if empty
+            setBoosters(DEFAULT_BOOSTERS);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch boosters:", error);
+        setBoosters(DEFAULT_BOOSTERS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBoosters();
   }, []);
 
   const availableGames = useMemo(

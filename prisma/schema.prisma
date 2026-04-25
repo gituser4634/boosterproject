@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  engineType = "library"
 }
 
 datasource db {
@@ -38,13 +37,21 @@ enum NotificationType {
   PAYMENT_RELEASED
 }
 
+enum ServiceType {
+  PLAYING
+  BOOSTING
+  COACHING
+}
+
 model User {
   id              String         @id @default(uuid()) @db.Uuid
   username        String         @unique
+  displayName     String
   email           String         @unique
   password        String
   role            Role
   isActive        Boolean        @default(true)
+  profilePictureUrl String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   boosterProfile  BoosterProfile?
@@ -64,15 +71,19 @@ model BoosterProfile {
   id            String            @id @default(uuid()) @db.Uuid
   userId        String            @unique @db.Uuid
   displayName   String
-  country       String
-  age           Int
-  mainGameId    String            @db.Uuid
+  country       String?
+  age           Int?
+  mainGameId    String?           @db.Uuid
   averageRating Decimal           @default(0) @db.Decimal(3, 2)
   totalReviews  Int               @default(0)
+  successRate   Int               @default(100)
+  hours         Int               @default(0)
+  bio           String            @default("")
+  hourlyRate    Decimal           @default(0) @db.Decimal(10, 2)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mainGame      Game              @relation("BoosterMainGame", fields: [mainGameId], references: [id], onDelete: Restrict)
+  mainGame      Game?             @relation("BoosterMainGame", fields: [mainGameId], references: [id], onDelete: SetNull)
   boosterGames  BoosterGame[]
   reviews       Review[]          @relation("BoosterReviews")
   orders        Order[]           @relation("BoosterOrders")
@@ -94,6 +105,7 @@ model Game {
   mainGameBoosters     BoosterProfile[] @relation("BoosterMainGame")
   boosterGames         BoosterGame[]
   orders               Order[]
+  services             Service[]
 }
 
 model Rank {
@@ -135,8 +147,9 @@ model Order {
   customerId     String              @db.Uuid
   boosterId      String              @db.Uuid
   gameId         String              @db.Uuid
-  currentRankId  String              @db.Uuid
-  targetRankId   String              @db.Uuid
+  serviceId      String?             @db.Uuid
+  currentRankId  String?             @db.Uuid
+  targetRankId   String?             @db.Uuid
   price          Decimal             @db.Decimal(10, 2)
   status         OrderStatus         @default(PENDING)
   createdAt      DateTime            @default(now())
@@ -144,15 +157,18 @@ model Order {
   customer       User                @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Restrict)
   booster        BoosterProfile      @relation("BoosterOrders", fields: [boosterId], references: [id], onDelete: Restrict)
   game           Game                @relation(fields: [gameId], references: [id], onDelete: Restrict)
-  currentRank    Rank                @relation("OrderCurrentRank", fields: [currentRankId], references: [id], onDelete: Restrict)
-  targetRank     Rank                @relation("OrderTargetRank", fields: [targetRankId], references: [id], onDelete: Restrict)
+  service        Service?            @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  currentRank    Rank?               @relation("OrderCurrentRank", fields: [currentRankId], references: [id], onDelete: Restrict)
+  targetRank     Rank?               @relation("OrderTargetRank", fields: [targetRankId], references: [id], onDelete: Restrict)
   messages       Message[]
   payment        Payment?
   statusHistory  OrderStatusHistory[]
+  review         Review?
 
   @@index([customerId])
   @@index([boosterId])
   @@index([gameId])
+  @@index([serviceId])
   @@index([status, createdAt])
 }
 
@@ -222,16 +238,18 @@ model Review {
   id         String         @id @default(uuid()) @db.Uuid
   boosterId  String         @db.Uuid
   customerId String         @db.Uuid
+  orderId    String         @unique @db.Uuid
   rating     Int
   comment    String         @default("")
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   booster    BoosterProfile @relation("BoosterReviews", fields: [boosterId], references: [id], onDelete: Cascade)
   customer   User           @relation("ReviewCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  order      Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  @@unique([boosterId, customerId])
   @@index([boosterId])
   @@index([customerId])
+  @@index([orderId])
 }
 
 model Report {
@@ -281,4 +299,21 @@ model BoosterLanguage {
 
   @@unique([boosterId, language])
   @@index([boosterId])
+}
+
+model Service {
+  id          String      @id @default(uuid()) @db.Uuid
+  gameId      String      @db.Uuid
+  type        ServiceType
+  title       String
+  description String?
+  basePrice   Decimal     @db.Decimal(10, 2)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  game        Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  orders      Order[]
+
+  @@index([gameId])
+  @@index([type])
 }

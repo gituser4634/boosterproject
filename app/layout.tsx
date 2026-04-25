@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -27,8 +28,8 @@ export default function RootLayout({
       <body
         className={`${spaceGrotesk.variable} ${manrope.variable} bg-background text-on-background font-body selection:bg-primary/30`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
-}
+}

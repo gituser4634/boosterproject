@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   AtSign,
   ClipboardList,
+  Copy,
   Crown,
   Edit3,
   Gamepad2,
@@ -61,13 +62,21 @@ type SocialLinkEntry = {
 export default function BoosterProfilePage() {
   const savedMainGameStorageKey = "booster-main-game";
   const router = useRouter();
+  const [userId, setUserId] = useState("");
+  const [username, setUsername] = useState("");
+  const [originalUsername, setOriginalUsername] = useState("");
+  const [isUsernameUnique, setIsUsernameUnique] = useState<boolean | null>(true);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [alias, setAlias] = useState("");
+  const [email, setEmail] = useState("");
   const [isOnline, setIsOnline] = useState(true);
   const [isNotificationsOn, setIsNotificationsOn] = useState(true);
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(2);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const { avatarUrl, setBoosterAvatarUrl, resetBoosterAvatarUrl } = useBoosterAvatar(defaultAvatar);
-  const [uiMessage, setUiMessage] = useState("Ready");
+  const [uiMessage, setUiMessage] = useState("Loading profile...");
+  const [isSaving, setIsSaving] = useState(false);
   const [languages, setLanguages] = useState<string[]>([]);
   const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
   const [languageToAdd, setLanguageToAdd] = useState("");
@@ -97,6 +106,33 @@ export default function BoosterProfilePage() {
     next: "",
     confirm: "",
   });
+
+  // Load real user data on mount
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) { showStatus("Not logged in. Please sign in first."); return; }
+        const data = await res.json();
+        const u = data.user;
+        setUserId(u.id ?? "");
+        setUsername(u.username ?? "");
+        setOriginalUsername(u.username ?? "");
+        setAlias(u.displayName ?? "");
+        setEmail(u.email ?? "");
+        if (u.boosterProfile) {
+          const bp = u.boosterProfile;
+          setCountryOfOrigin(bp.country ?? "");
+          setLanguages(bp.languages?.map((l: { language: string }) => l.language) ?? []);
+        }
+        showStatus("Profile loaded.");
+      } catch {
+        showStatus("Failed to load profile.");
+      }
+    };
+    loadUser();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const notifications: NotificationItem[] = [
     { id: "request", title: "New boost request assigned", meta: "Valorant ��� 2 min ago" },
     { id: "message", title: "Client sent you a message", meta: "Inbox ��� 14 min ago" },
@@ -278,6 +314,31 @@ export default function BoosterProfilePage() {
     setHasPendingAvatarChange(false);
   }, [avatarUrl]);
 
+  useEffect(() => {
+    if (!username || username === originalUsername) {
+      setIsUsernameUnique(true);
+      return;
+    }
+    const checkUsername = async () => {
+      setIsCheckingUsername(true);
+      try {
+        const res = await fetch(`/api/users/check-username?username=${encodeURIComponent(username)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setIsUsernameUnique(data.isUnique);
+        } else {
+          setIsUsernameUnique(null);
+        }
+      } catch {
+        setIsUsernameUnique(null);
+      } finally {
+        setIsCheckingUsername(false);
+      }
+    };
+    const timer = setTimeout(checkUsername, 500);
+    return () => clearTimeout(timer);
+  }, [username, originalUsername]);
+
   const handleOpenLanguagePicker = () => {
     if (isDeactivated) {
       showStatus("Account is deactivated. Languages cannot be changed.");
@@ -327,13 +388,26 @@ export default function BoosterProfilePage() {
     showStatus(`Language removed: ${name}`);
   };
 
-  const handleCredentialsUpdate = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleCredentialsUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (isDeactivated) {
-      showStatus("Account is deactivated. Profile updates are disabled.");
-      return;
+    if (isDeactivated) { showStatus("Account is deactivated. Profile updates are disabled."); return; }
+    if (username && !isUsernameUnique) { showStatus("Choose an available username first."); return; }
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, displayName: alias, email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showStatus(data.error ?? "Save failed."); return; }
+      setOriginalUsername(username);
+      showStatus("Identity details saved.");
+    } catch {
+      showStatus("Network error. Try again.");
+    } finally {
+      setIsSaving(false);
     }
-    showStatus("Identity details updated locally.");
   };
 
   const handleCloseGame = (gameId: number) => {
@@ -403,15 +477,22 @@ export default function BoosterProfilePage() {
     );
   };
 
-  const handleSaveExpertise = () => {
-    if (isDeactivated) {
-      showStatus("Account is deactivated. Service expertise cannot be saved.");
-      return;
-    }
+  const handleSaveExpertise = async () => {
+    if (isDeactivated) { showStatus("Account is deactivated. Service expertise cannot be saved."); return; }
     const trimmedGame = primaryGame.trim();
     setSavedPrimaryGame(trimmedGame);
     window.localStorage.setItem(savedMainGameStorageKey, trimmedGame);
-    showStatus("Service expertise saved locally.");
+    // Also save languages and country to booster profile
+    try {
+      await fetch("/api/profile/booster", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country: countryOfOrigin, languages }),
+      });
+      showStatus("Expertise and profile saved.");
+    } catch {
+      showStatus("Expertise saved locally. Network error on server save.");
+    }
   };
 
   useEffect(() => {
@@ -493,11 +574,8 @@ export default function BoosterProfilePage() {
     return "bg-primary/10 text-primary";
   };
 
-  const handleChangePassword = () => {
-    if (isDeactivated) {
-      showStatus("Account is deactivated. Password changes are disabled.");
-      return;
-    }
+  const handleChangePassword = async () => {
+    if (isDeactivated) { showStatus("Account is deactivated. Password changes are disabled."); return; }
     if (!passwordFields.current || !passwordFields.next || !passwordFields.confirm) {
       showStatus("Fill in all password fields first.");
       return;
@@ -506,8 +584,26 @@ export default function BoosterProfilePage() {
       showStatus("New password and confirmation do not match.");
       return;
     }
-    setPasswordFields({ current: "", next: "", confirm: "" });
-    showStatus("Password changed locally.");
+    if (passwordFields.next.length < 8) {
+      showStatus("New password must be at least 8 characters.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/profile/password", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: passwordFields.current, newPassword: passwordFields.next }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showStatus(data.error ?? "Password change failed."); return; }
+      setPasswordFields({ current: "", next: "", confirm: "" });
+      showStatus("Password changed successfully.");
+    } catch {
+      showStatus("Network error. Try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleToggleLog = () => {
@@ -693,23 +789,64 @@ export default function BoosterProfilePage() {
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
             <div className="ghost-border rounded-xl bg-surface-container-low p-8 md:col-span-7">
-              <div className="mb-8 flex items-center gap-4">
-                <div className="rounded-lg bg-primary/10 p-3">
-                  <UserCircle className="h-5 w-5 text-primary" />
+              <div className="mb-8 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-lg bg-primary/10 p-3">
+                    <UserCircle className="h-5 w-5 text-primary" />
+                  </div>
+                  <h2 className="font-headline text-2xl font-bold">Identity Details</h2>
                 </div>
-                <h2 className="font-headline text-2xl font-bold">Identity Details</h2>
+                <div className="flex items-center gap-2 rounded-md border border-white/5 bg-surface-container-lowest px-3 py-1.5">
+                  <span className="font-mono text-xs text-on-surface-variant">ID: {userId ? userId.slice(0, 20) + "…" : "—"}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-on-surface-variant hover:text-primary"
+                    onClick={() => {
+                      navigator.clipboard.writeText(userId);
+                      showStatus("Internal UID copied to clipboard.");
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
 
               <form className="space-y-6" onSubmit={handleCredentialsUpdate}>
                 <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      Username
+                    </Label>
+                    {isCheckingUsername ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Checking...</span>
+                    ) : username ? (
+                      isUsernameUnique ? (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Available</span>
+                      ) : (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-error">Taken</span>
+                      )
+                    ) : null}
+                  </div>
+                  <Input
+                    className={`ghost-border w-full rounded-sm border ${username && !isUsernameUnique && !isCheckingUsername ? "border-error focus:ring-error" : "border-none focus:ring-primary"} bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1`}
+                    placeholder="foreign111"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Booster ID
+                    Alias
                   </Label>
                   <Input
                     className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
-                    placeholder="foreign111"
+                    placeholder="Foreign"
                     type="text"
-                    defaultValue=""
+                    value={alias}
+                    onChange={(e) => setAlias(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
@@ -718,9 +855,10 @@ export default function BoosterProfilePage() {
                   </Label>
                   <Input
                     className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
-                    placeholder="medalihiza@gmail.com"
+                    placeholder="your@email.com"
                     type="email"
-                    defaultValue=""
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">

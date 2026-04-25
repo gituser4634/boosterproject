@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { buildBrowseSearchUrl } from "@/lib/search-url";
+import { ReviewSystem } from "@/components/reviews/review-system";
 
 type Review = {
   id: string;
@@ -109,7 +110,13 @@ export interface BoosterProfileData {
   reviews: Review[];
 }
 
-export function BoosterProfileView({ profileData }: { profileData?: BoosterProfileData }) {
+export function BoosterProfileView({
+  profileData,
+  totalOrdersOverride
+}: {
+  profileData?: BoosterProfileData,
+  totalOrdersOverride?: number
+}) {
   const router = useRouter();
   const isClientLoggedIn = false;
   const navItems = ["Services", "Games", "About"];
@@ -134,7 +141,7 @@ export function BoosterProfileView({ profileData }: { profileData?: BoosterProfi
     languages: ["English", "German", "French"],
     joinDate: "Jan 2022",
     rating: 4.9,
-    totalOrders: 500,
+    totalOrders: totalOrdersOverride ?? 500,
     hourlyRate: 15.0,
     hoursPlayed: "3K+",
     successRate: "98%",
@@ -399,42 +406,19 @@ export function BoosterProfileView({ profileData }: { profileData?: BoosterProfi
 
             <div className="flex items-end justify-between gap-4">
               <div>
-                <h2 className="font-headline mb-2 text-4xl font-bold tracking-tight">Customer Reviews</h2>
+                <h2 className="font-headline mb-2 text-4xl font-bold tracking-tight text-on-surface">Customer Reviews</h2>
                 <div className="flex items-center gap-4">
-                  <ReviewStars rating={Math.round(data.rating) as 4 | 5} />
-                  <span className="text-sm font-medium text-on-surface-variant">Based on {data.totalOrders} verified orders</span>
+                  <div className="flex gap-1 text-primary">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} size={16} className={i < Math.round(data.rating) ? "fill-current" : "opacity-20"} />
+                    ))}
+                  </div>
+                  <span className="text-sm font-medium text-on-surface-variant">Based on {data.reviews.length} verified reviews</span>
                 </div>
               </div>
-              <Button variant="ghost" className="text-xs font-bold uppercase tracking-widest text-secondary hover:text-secondary-fixed">
-                View All
-                <ArrowRight className="h-4 w-4" />
-              </Button>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {data.reviews.map((review) => (
-                <article key={review.id} className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-6 transition-colors hover:bg-surface-container">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-highest font-bold text-primary">
-                        {review.name[0]}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-on-surface">{review.name}</p>
-                        <p className="text-[10px] uppercase tracking-tighter text-on-surface-variant">{review.summary}</p>
-                      </div>
-                    </div>
-                    <ReviewStars rating={review.rating} />
-                  </div>
-
-                  <p className="text-sm italic leading-relaxed text-on-surface-variant">{review.comment}</p>
-
-                  <div className={`mt-3 text-[10px] font-bold uppercase tracking-widest ${toneToClass[review.tone]}`}>
-                    Verified Review
-                  </div>
-                </article>
-              ))}
-            </div>
+            <ReviewSystem boosterId={data.boosterId} />
           </div>
 
           <aside className="space-y-8 lg:col-span-4">
