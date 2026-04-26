@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import {
   ArrowRight,
   BadgeCheck,
+  Brain,
+  Diamond,
   Gamepad2,
   Headset,
   PlayCircle,
   Rocket,
   Search,
+  Shield,
   ShieldCheck,
   Sparkles,
   Star,
@@ -23,11 +26,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { AuthLoginModal, AuthRegisterModal, TermsModal } from "@/components/shared/auth-modals";
+import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
+import { BoosterProfileMenu } from "@/components/shared/booster-profile-menu";
 import { buildBrowseSearchUrl } from "@/lib/search-url";
 
 export default function StitchDesignPage() {
   const router = useRouter();
-  const isClientLoggedIn = false;
+  const { data: session } = useSession();
+  const isClientLoggedIn = session?.user?.role === "CLIENT";
+  const isBoosterLoggedIn = session?.user?.role === "BOOSTER";
   const navItems = ["Services", "Games", "About"];
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginType, setLoginType] = useState<"booster" | "client">("booster");
@@ -72,6 +79,7 @@ export default function StitchDesignPage() {
       live: true,
       image:
         "https://scontent.ftun15-1.fna.fbcdn.net/v/t39.30808-1/576952454_1436088074602191_7652156089798589190_n.jpg?stp=c446.0.1148.1148a_dst-jpg_s200x200_tt6&_nc_cat=103&ccb=1-7&_nc_sid=e99d92&_nc_ohc=5FwttousWeUQ7kNvwE2_dOn&_nc_oc=AdpPk4mtAIl23paB3xhJJBwWv2nX6TeHu1ST7rflEfluu-RBof0n3HUrQ-vTuGuZWxE&_nc_zt=24&_nc_ht=scontent.ftun15-1.fna&_nc_gid=SLWLHC_59ZkFmSMtogr80A&_nc_ss=7a3a8&oh=00_Af0A48KoauoK8UwFMnMGF5pzA-Y_8_wIedIQnnUsCPbeBw&oe=69E194CD",
+      success: 97,
     },
     {
       name: "SALMA444",
@@ -102,6 +110,7 @@ export default function StitchDesignPage() {
       live: false,
       image:
         "https://scontent.ftun15-1.fna.fbcdn.net/v/t39.30808-1/462228392_2496981260655405_7587418930506211631_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=110&ccb=1-7&_nc_sid=e99d92&_nc_ohc=2WP56qrdVRsQ7kNvwFWkYS1&_nc_oc=Adoq-ZuUDnBhCQbyAR9VqREYcSxy5LvOkJlDh0N84iYLiDROjba75ybNbZY9hlt-tko&_nc_zt=24&_nc_ht=scontent.ftun15-1.fna&_nc_gid=mhkCClg0bo0Nr3kTbd-DLg&_nc_ss=7a3a8&oh=00_Af0mTktaRLpe0cPJdYydbfjfpXr8CNbc7S3pXGW71HVz1w&oe=69E1BA45",
+      success: 82,
     },
   ]);
 
@@ -161,6 +170,12 @@ export default function StitchDesignPage() {
         return <Sparkles size={18} strokeWidth={2.25} />;
       case "trophy":
         return <Trophy size={18} strokeWidth={2.25} />;
+      case "psychology":
+        return <Brain size={18} strokeWidth={2.25} />;
+      case "diamond":
+        return <Diamond size={18} strokeWidth={2.25} />;
+      case "shield":
+        return <Shield size={18} strokeWidth={2.25} />;
       default:
         return <BadgeCheck size={18} strokeWidth={2.25} />;
     }
@@ -369,7 +384,17 @@ export default function StitchDesignPage() {
                 </>
               ) : null}
             </div>
-            {isClientLoggedIn ? null : (
+            {isClientLoggedIn ? (
+              <ClientProfileMenu 
+                avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
+                alt={session?.user?.name ?? "Client profile"} 
+              />
+            ) : isBoosterLoggedIn ? (
+              <BoosterProfileMenu 
+                avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
+                alt={session?.user?.name ?? "Booster profile"} 
+              />
+            ) : (
               <Button
                 type="button"
                 onClick={() => setIsLoginOpen(true)}
@@ -521,9 +546,19 @@ export default function StitchDesignPage() {
                         <span className="font-bold">{booster.rating}</span>
                       </div>
                     </div>
-                    <div className="ghost-border flex items-center gap-3 rounded-md bg-surface-dim px-4 py-3">
-                      <span className="text-secondary">{renderRankIcon(booster.rankIcon)}</span>
-                      <span className="text-sm font-bold uppercase tracking-tight">{booster.rank}</span>
+                    <div 
+                      className="ghost-border flex items-center gap-3 rounded-md bg-surface-dim px-4 py-3"
+                      style={{ borderLeftColor: (booster as any).rankColor, borderLeftWidth: (booster as any).rankColor ? '3px' : '1px' }}
+                    >
+                      <span style={{ color: (booster as any).rankColor }}>{renderRankIcon(booster.rankIcon)}</span>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-50">{booster.rank}</span>
+                        <span className="text-sm font-bold uppercase tracking-tight" style={{ color: (booster as any).rankColor }}>{(booster as any).boosterRank || "ROOKIE"}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                      <span>Success</span>
+                      <span className="text-primary">{(booster as any).success ?? 100}%</span>
                     </div>
                   </div>
                 </Link>

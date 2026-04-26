@@ -5,14 +5,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
+  BadgeCheck,
+  Brain,
   Calendar,
   CheckCircle2,
+  Diamond,
   Flag,
   Languages,
   MapPin,
   MessageCircle,
   Search,
+  Shield,
+  Sparkles,
   Star,
+  Trophy,
   Zap,
 } from "lucide-react";
 
@@ -20,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { useSession } from "next-auth/react";
 import { buildBrowseSearchUrl } from "@/lib/search-url";
 import { ReviewSystem } from "@/components/reviews/review-system";
 
@@ -107,18 +114,26 @@ export interface BoosterProfileData {
   mainGame: string;
   mainRank: string;
   mainBadgeUrl: string;
+  games?: Array<{
+    name: string;
+    rank: string;
+  }>;
   reviews: Review[];
+  serverRank?: string;
+  serverRankIcon?: string;
+  serverRankColor?: string;
 }
 
 export function BoosterProfileView({
   profileData,
-  totalOrdersOverride
+  profileOverrides
 }: {
   profileData?: BoosterProfileData,
-  totalOrdersOverride?: number
+  profileOverrides?: Partial<BoosterProfileData>
 }) {
   const router = useRouter();
-  const isClientLoggedIn = false;
+  const { data: session, status } = useSession();
+  const isClientLoggedIn = status === "authenticated";
   const navItems = ["Services", "Games", "About"];
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<"all" | "clients" | "boosters">("all");
@@ -131,7 +146,7 @@ export function BoosterProfileView({
   };
 
   // Fallback data if none is provided
-  const data: BoosterProfileData = profileData || {
+  const defaultData: BoosterProfileData = {
     boosterId: "commander-z",
     username: "CommanderZ",
     alias: "COMMANDER Z",
@@ -141,7 +156,7 @@ export function BoosterProfileView({
     languages: ["English", "German", "French"],
     joinDate: "Jan 2022",
     rating: 4.9,
-    totalOrders: totalOrdersOverride ?? 500,
+    totalOrders: 500,
     hourlyRate: 15.0,
     hoursPlayed: "3K+",
     successRate: "98%",
@@ -149,6 +164,32 @@ export function BoosterProfileView({
     mainRank: "Apex Predator",
     mainBadgeUrl: "https://mmonster.co/media/40/b0/a8/1715176623/apex-legends-predator-badge.webp",
     reviews: reviews
+  };
+
+  const renderRankIcon = (icon: string) => {
+    switch (icon) {
+      case "military_tech":
+      case "workspace_premium":
+        return <BadgeCheck size={20} strokeWidth={2.25} />;
+      case "stars":
+        return <Sparkles size={20} strokeWidth={2.25} />;
+      case "trophy":
+        return <Trophy size={20} strokeWidth={2.25} />;
+      case "psychology":
+        return <Brain size={20} strokeWidth={2.25} />;
+      case "diamond":
+        return <Diamond size={20} strokeWidth={2.25} />;
+      case "shield":
+        return <Shield size={20} strokeWidth={2.25} />;
+      default:
+        return <BadgeCheck size={20} strokeWidth={2.25} />;
+    }
+  };
+
+  const data = {
+    ...defaultData,
+    ...profileData,
+    ...profileOverrides
   };
 
   return (
@@ -267,12 +308,23 @@ export function BoosterProfileView({
                 </>
               ) : null}
             </div>
-            {isClientLoggedIn ? null : (
+            {isClientLoggedIn ? (
               <Button
                 type="button"
-                className="top-panel-link px-2 py-2"
+                className="top-panel-link px-4 py-2"
                 variant="ghost"
                 size="sm"
+                onClick={() => router.push(session?.user?.role === "BOOSTER" ? "/booster-dashboard" : "/client-dashboard")}
+              >
+                Dashboard
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="top-panel-link px-4 py-2"
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/login")}
               >
                 Login
               </Button>
@@ -299,6 +351,12 @@ export function BoosterProfileView({
                 <span className="rounded-sm border border-outline-variant/40 bg-tertiary/20 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-tertiary">
                   Top Rated Booster
                 </span>
+                {data.serverRank && (
+                  <div className="flex items-center gap-1.5 rounded-full bg-surface-container-highest px-3 py-1 text-[10px] font-black uppercase tracking-widest" style={{ color: data.serverRankColor, border: `1px solid ${data.serverRankColor}40` }}>
+                    {renderRankIcon(data.serverRankIcon || "")}
+                    {data.serverRank}
+                  </div>
+                )}
                 <div className="flex items-center gap-1 text-primary">
                   <Star className="h-4 w-4 fill-current" />
                   <span className="text-sm font-bold">{data.rating} Score</span>
@@ -323,8 +381,9 @@ export function BoosterProfileView({
                   <h1 className="font-headline text-6xl font-bold leading-[0.9] tracking-tighter text-on-surface md:text-8xl">
                     <span className="uppercase">{data.alias}</span>
                   </h1>
-
-                  <div className="flex items-center gap-3">
+                  <p className="text-sm font-bold uppercase tracking-[0.3em] text-primary opacity-70">@{data.username}</p>
+                  
+                  <div className="flex items-center gap-3 mt-4">
                     <div className="min-w-[80px] rounded-xl border border-primary/20 bg-surface-container-high/60 px-4 py-2 text-center backdrop-blur-md">
                       <p className="font-headline text-xl font-bold leading-none text-primary">{data.hoursPlayed}</p>
                       <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Hours</p>
@@ -400,7 +459,13 @@ export function BoosterProfileView({
               <p className="mb-4 leading-relaxed text-on-surface-variant">
                 {data.bio}
               </p>
-              <div className="flex flex-wrap gap-4">
+              <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(data.games || []).map((game) => (
+                   <div key={game.name} className="flex items-center justify-between rounded-xl border border-outline-variant/20 bg-surface-container-highest px-4 py-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-on-surface">{game.name}</span>
+                      <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">{game.rank}</span>
+                   </div>
+                ))}
               </div>
             </div>
 

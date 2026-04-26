@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { addBoosterXp, XP_REWARDS } from "@/lib/xp-service";
 
 const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
@@ -105,6 +106,9 @@ export async function POST(req: Request) {
           data: {
             totalReviews: newTotalReviews,
             averageRating: newAverageRating,
+            xp: {
+              increment: XP_REWARDS.REVIEW_RECEIVED
+            }
           },
         });
       }

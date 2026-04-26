@@ -11,7 +11,7 @@ export async function PATCH(req: Request) {
 
   try {
     const body = await req.json();
-    const { username, displayName, email } = body;
+    const { username, displayName, email, profilePictureUrl } = body;
 
     // Validate username uniqueness if it's being changed
     if (username) {
@@ -30,6 +30,7 @@ export async function PATCH(req: Request) {
         ...(username ? { username } : {}),
         ...(displayName !== undefined ? { displayName } : {}),
         ...(email ? { email: email.trim().toLowerCase() } : {}),
+        ...(profilePictureUrl !== undefined ? { profilePictureUrl } : {}),
       },
       select: {
         id: true,

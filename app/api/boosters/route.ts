@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { calculateBoosterRank } from "@/lib/booster-ranks";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -26,18 +27,25 @@ export async function GET(req: Request) {
 
     const formattedBoosters = boosters.map(booster => {
       const mainBoosterGame = booster.boosterGames.find(bg => bg.gameId === booster.mainGameId);
+      const defaultAvatar = "/booster-pfps/default-avatar.svg";
+      
+      const bRank = calculateBoosterRank(booster.xp || 0);
       
       return {
         id: booster.id,
-        name: booster.displayName || booster.user.username,
-        game: booster.mainGame.name,
+        userId: booster.userId,
+        name: booster.displayName || booster.user.username || "Anonymous Booster",
+        game: booster.mainGame?.name || "All Games",
         rating: Number(booster.averageRating).toFixed(1),
-        rank: mainBoosterGame?.rank.name || "Unranked",
-        rankIcon: "military_tech", // Default or map if possible
-        popularity: booster.successRate, // Mapping successRate to popularity
+        rank: mainBoosterGame?.rank.name || "ROOKIE",
+        rankIcon: bRank.icon, 
+        rankColor: bRank.color,
+        boosterRank: bRank.name,
+        success: booster.successRate || 100,
         rankValue: mainBoosterGame?.rank.order || 0,
-        live: false, // Default to false for now
-        image: mainBoosterGame?.rank.imageUrl || "https://i.ytimg.com/vi/oQtHENM_GZU/hqdefault.jpg"
+        live: false,
+        image: booster.user.profilePictureUrl || defaultAvatar,
+        xp: booster.xp || 0
       };
     });
 

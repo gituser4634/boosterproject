@@ -2,22 +2,40 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
 import { Gamepad2, Rocket, ShieldCheck, Swords, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthLoginModal } from "@/components/shared/auth-modals";
+import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
+import { BoosterProfileMenu } from "@/components/shared/booster-profile-menu";
 
 const particleIcons = [Gamepad2, Trophy, Swords, Rocket, ShieldCheck, Gamepad2, Trophy, Rocket];
 
 export default function LiveBoostsComingSoonPage() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginType, setLoginType] = useState<"booster" | "client">("booster");
 
   const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
-    void payload;
-    return {
-      ok: false,
-      message: "Temporary auth has been removed. Connect your real auth backend to enable login.",
-    };
+    try {
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: payload.email,
+        password: payload.password,
+        role: payload.role,
+      });
+
+      if (result?.error) {
+        return { ok: false, message: result.error };
+      }
+
+      router.push(payload.role === "booster" ? "/booster-dashboard" : "/client-settings");
+      return { ok: true, message: "Login successful!" };
+    } catch (error) {
+      return { ok: false, message: "An unexpected error occurred during login." };
+    }
   };
 
   return (
@@ -66,15 +84,27 @@ export default function LiveBoostsComingSoonPage() {
                 className="h-5 w-5 opacity-90"
               />
             </a>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsLoginOpen(true)}
-              className="top-panel-link px-2 py-2"
-            >
-              Login
-            </Button>
+            {session?.user?.role === "CLIENT" ? (
+              <ClientProfileMenu 
+                avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
+                alt={session?.user?.name ?? "Client profile"} 
+              />
+            ) : session?.user?.role === "BOOSTER" ? (
+              <BoosterProfileMenu 
+                avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
+                alt={session?.user?.name ?? "Booster profile"} 
+              />
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsLoginOpen(true)}
+                className="top-panel-link px-2 py-2"
+              >
+                Login
+              </Button>
+            )}
           </div>
         </div>
       </header>

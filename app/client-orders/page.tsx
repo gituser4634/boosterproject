@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
+import { BoosterProfileMenu } from "@/components/shared/booster-profile-menu";
 
 type ClientOrder = {
   id: string;
@@ -13,6 +16,7 @@ type ClientOrder = {
 };
 
 export default function ClientOrdersPage() {
+  const { data: session } = useSession();
   const [orders] = useState<ClientOrder[]>([]);
   const [message] = useState<string | null>(
     "Temporary auth was removed. Connect your real backend to load client orders."
@@ -42,9 +46,21 @@ export default function ClientOrdersPage() {
             <Link href="/client-orders" className="top-panel-link top-panel-link-active px-4 py-2 text-sm font-bold uppercase tracking-wide">Orders</Link>
           </div>
 
-          <Button asChild type="button" variant="ghost" size="sm" className="top-panel-link px-2 py-2">
-            <Link href="/level-up">Login</Link>
-          </Button>
+          {session?.user?.role === "CLIENT" ? (
+            <ClientProfileMenu 
+              avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
+              alt={session?.user?.name ?? "Client profile"} 
+            />
+          ) : session?.user?.role === "BOOSTER" ? (
+            <BoosterProfileMenu 
+              avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
+              alt={session?.user?.name ?? "Booster profile"} 
+            />
+          ) : (
+            <Button asChild type="button" variant="ghost" size="sm" className="top-panel-link px-2 py-2">
+              <Link href="/level-up">Login</Link>
+            </Button>
+          )}
         </div>
       </header>
 

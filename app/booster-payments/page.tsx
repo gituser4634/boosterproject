@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import {
   ArrowRight,
   Bell,
@@ -17,7 +18,8 @@ import { BoosterMobileNav, BoosterSidebar } from "@/components/booster/shell-nav
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
-import { useBoosterAvatar } from "@/lib/use-booster-avatar";
+import { useNotifications } from "@/hooks/use-notifications";
+import { useSession } from "next-auth/react";
 
 type OrderRow = {
   id: string;
@@ -34,7 +36,34 @@ export default function BoosterPaymentsPage() {
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isSidebarOnline, setIsSidebarOnline] = useState(true);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(2);
+  const { 
+    notifications: realNotifications, 
+    unreadCount: realUnreadCount, 
+    markAllAsRead 
+  } = useNotifications();
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [savedPrimaryGame, setSavedPrimaryGame] = useState("");
+  const savedMainGameStorageKey = "booster-main-game";
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(savedMainGameStorageKey) ?? "";
+    setSavedPrimaryGame(saved);
+
+    const loadUserProfile = async () => {
+      try {
+        const response = await fetch("/api/auth/me");
+        if (response.ok) {
+          const data = await response.json();
+          setUserProfile(data.user);
+        }
+      } catch (err) {
+        console.error("Failed to load user profile:", err);
+      }
+    };
+    loadUserProfile();
+  }, []);
+
+  const { data: session } = useSession();
   const [searchTerm, setSearchTerm] = useState("");
   const [availableBalance] = useState(0);
   const [balanceChangePercent] = useState(0);
@@ -44,12 +73,7 @@ export default function BoosterPaymentsPage() {
   const [taxPeriodLabel] = useState("Tax Year 2024 • Fiscal Period Q3");
   const [weeklyRevenue] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
   const [completedOrders] = useState<OrderRow[]>([]);
-
-  const { avatarUrl } = useBoosterAvatar("/booster-pfps/default-avatar.svg");
-  const notifications: NotificationItem[] = [
-    { id: "payout", title: "2 payout confirmations pending", meta: "Finance • Just now" },
-    { id: "report", title: "Weekly earnings report is ready", meta: "Reports • 2h ago" },
-  ];
+  const avatarUrl = session?.user?.image ?? "/booster-pfps/default-avatar.svg";
 
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -72,7 +96,7 @@ export default function BoosterPaymentsPage() {
   });
 
   const handleMarkNotificationsRead = () => {
-    setUnreadNotificationCount(0);
+    markAllAsRead();
   };
 
   const csvEscape = (value: string | number) => {
@@ -150,7 +174,7 @@ export default function BoosterPaymentsPage() {
       <BoosterTopBar
         avatarUrl={avatarUrl}
         isNotificationsOn={isNotificationsOn}
-        unreadNotificationCount={unreadNotificationCount}
+        unreadNotificationCount={realUnreadCount}
         isNotificationsPanelOpen={isNotificationsPanelOpen}
         onToggleNotificationsPanel={() => {
           setIsProfileMenuOpen(false);
@@ -159,7 +183,7 @@ export default function BoosterPaymentsPage() {
         onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
         onToggleNotifications={() => setIsNotificationsOn((current) => !current)}
         onMarkNotificationsRead={handleMarkNotificationsRead}
-        notifications={notifications}
+        notifications={realNotifications}
         isProfileMenuOpen={isProfileMenuOpen}
         onToggleProfileMenu={() => {
           setIsNotificationsPanelOpen(false);
@@ -173,7 +197,7 @@ export default function BoosterPaymentsPage() {
           }
 
           if (action === "Logout") {
-            router.push("/");
+            await signOut({ callbackUrl: "/" });
             return;
           }
 
@@ -185,6 +209,9 @@ export default function BoosterPaymentsPage() {
         active="payments"
         isOnline={isSidebarOnline}
         onToggleOnline={() => setIsSidebarOnline((current) => !current)}
+        mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
+        rankInfo={userProfile?.boosterProfile?.rankInfo}
+        xp={userProfile?.boosterProfile?.xp}
       />
 
       <main className="ml-64 h-screen overflow-y-auto bg-background pb-12 pl-6 pr-6 pt-24">

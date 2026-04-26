@@ -6,12 +6,12 @@ import { signOut } from "next-auth/react";
 import { ProfileAvatarButton } from "@/components/booster/profile-avatar-button";
 import { Button } from "@/components/ui/button";
 
-type ClientProfileMenuProps = {
+type BoosterProfileMenuProps = {
   avatarUrl: string;
   alt?: string;
 };
 
-export function ClientProfileMenu({ avatarUrl, alt = "Client profile avatar" }: ClientProfileMenuProps) {
+export function BoosterProfileMenu({ avatarUrl, alt = "Booster profile avatar" }: BoosterProfileMenuProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -42,21 +42,21 @@ export function ClientProfileMenu({ avatarUrl, alt = "Client profile avatar" }: 
               type="button"
               onClick={() => {
                 setIsOpen(false);
-                router.push("/client-settings");
+                router.push("/booster-dashboard");
               }}
               variant="menu"
             >
-              Settings
+              Dashboard
             </Button>
             <Button
               type="button"
               onClick={() => {
                 setIsOpen(false);
-                router.push("/client-orders");
+                router.push("/booster-profile");
               }}
               variant="menu"
             >
-              My Orders
+              Settings
             </Button>
             <Button
               type="button"

@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { BadgeCheck, Search, Sparkles, Star, Trophy } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
+import { BadgeCheck, Brain, Diamond, Search, Shield, Sparkles, Star, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { AuthLoginModal } from "@/components/shared/auth-modals";
+import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
+import { BoosterProfileMenu } from "@/components/shared/booster-profile-menu";
 
 type Booster = {
   id: string;
@@ -17,10 +20,12 @@ type Booster = {
   rating: string;
   rank: string;
   rankIcon: string;
-  popularity: number;
-  rankValue: number;
+  success: number;
+  rankColor?: string;
+  boosterRank?: string;
   live: boolean;
   image: string;
+  xp?: number;
 };
 
 const GAME_IMAGE_POOL: Record<string, string[]> = {
@@ -206,56 +211,7 @@ function getGameImage(game: string, random: () => number, variantIndex?: number)
   return pickRandom(pool, random);
 }
 
-const DEFAULT_BOOSTERS: Booster[] = [
-  {
-    id: "default-1",
-    name: "MOHAMED123",
-    game: "Apex Legends",
-    rating: "5.0",
-    rank: "Apex Predator",
-    rankIcon: "military_tech",
-    popularity: 97,
-    rankValue: 5,
-    live: true,
-    image: getGameImage("Apex Legends", () => 0.11, 0),
-  },
-  {
-    id: "default-2",
-    name: "SALMA444",
-    game: "Valorant",
-    rating: "4.9",
-    rank: "Radiant #42",
-    rankIcon: "workspace_premium",
-    popularity: 88,
-    rankValue: 4,
-    live: false,
-    image: "/booster-pfps/salma.png",
-  },
-  {
-    id: "default-3",
-    name: "Adam",
-    game: "League of Legends",
-    rating: "5.0",
-    rank: "Challenger",
-    rankIcon: "stars",
-    popularity: 95,
-    rankValue: 5,
-    live: false,
-    image: getGameImage("League of Legends", () => 0.33, 2),
-  },
-  {
-    id: "default-4",
-    name: "TAHERXx12",
-    game: "Overwatch 2",
-    rating: "4.8",
-    rank: "Top 500",
-    rankIcon: "trophy",
-    popularity: 82,
-    rankValue: 5,
-    live: false,
-    image: getGameImage("Overwatch 2", () => 0.44, 0),
-  },
-];
+// DEFAULT_BOOSTERS removed to ensure only real data is shown.
 
 function generateBoosterRoster(total: number, reservedNames: string[]): Booster[] {
   // Keeping this as a potential fallback or for mock data if needed
@@ -263,11 +219,14 @@ function generateBoosterRoster(total: number, reservedNames: string[]): Booster[
 }
 
 function BoosterBrowsePageContent() {
-  const isClientLoggedIn = false;
+  const { data: session } = useSession();
+  const isClientLoggedIn = session?.user?.role === "CLIENT";
+  const isBoosterLoggedIn = session?.user?.role === "BOOSTER";
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [selectedGame, setSelectedGame] = useState("all");
   const [selectedRank, setSelectedRank] = useState("all");
-  const [sortBy, setSortBy] = useState<"game" | "popularity" | "rating" | "rank">("rating");
+  const [sortBy, setSortBy] = useState<"game" | "success" | "rating" | "rank">("rating");
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginType, setLoginType] = useState<"booster" | "client">("booster");
   const [searchText, setSearchText] = useState("");
@@ -280,11 +239,23 @@ function BoosterBrowsePageContent() {
   }, [searchParams]);
 
   const handleLoginSubmit = async (payload: { email: string; password: string; role: "booster" | "client" }) => {
-    void payload;
-    return {
-      ok: false,
-      message: "Temporary auth has been removed. Connect your real auth backend to enable login.",
-    };
+    try {
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: payload.email,
+        password: payload.password,
+        role: payload.role,
+      });
+
+      if (result?.error) {
+        return { ok: false, message: result.error };
+      }
+
+      router.push(payload.role === "booster" ? "/booster-dashboard" : "/client-settings");
+      return { ok: true, message: "Login successful!" };
+    } catch (error) {
+      return { ok: false, message: "An unexpected error occurred during login." };
+    }
   };
 
   const [boosters, setBoosters] = useState<Booster[]>([]);
@@ -296,16 +267,12 @@ function BoosterBrowsePageContent() {
         const response = await fetch("/api/boosters");
         if (response.ok) {
           const data = await response.json();
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             setBoosters(data);
-          } else {
-            // Fallback to defaults if empty
-            setBoosters(DEFAULT_BOOSTERS);
           }
         }
       } catch (error) {
         console.error("Failed to fetch boosters:", error);
-        setBoosters(DEFAULT_BOOSTERS);
       } finally {
         setIsLoading(false);
       }
@@ -320,7 +287,7 @@ function BoosterBrowsePageContent() {
   );
 
   const availableRanks = useMemo(
-    () => ["all", ...new Set(boosters.map((booster) => booster.rank))],
+    () => ["all", ...new Set(boosters.map((booster) => booster.boosterRank))],
     [boosters]
   );
 
@@ -333,12 +300,12 @@ function BoosterBrowsePageContent() {
 
     const filtered = boosters.filter((booster) => {
       const gameMatches = selectedGame === "all" || booster.game === selectedGame;
-      const rankMatches = selectedRank === "all" || booster.rank === selectedRank;
+      const rankMatches = selectedRank === "all" || booster.boosterRank === selectedRank;
       const textMatches =
         term.length === 0 ||
         booster.name.toLowerCase().includes(term) ||
         booster.game.toLowerCase().includes(term) ||
-        booster.rank.toLowerCase().includes(term);
+        (booster.boosterRank && booster.boosterRank.toLowerCase().includes(term));
 
       return gameMatches && rankMatches && textMatches;
     });
@@ -348,12 +315,12 @@ function BoosterBrowsePageContent() {
         return a.game.localeCompare(b.game);
       }
 
-      if (sortBy === "popularity") {
-        return b.popularity - a.popularity;
+      if (sortBy === "success") {
+        return b.success - a.success;
       }
 
       if (sortBy === "rank") {
-        return b.rankValue - a.rankValue;
+        return (b.xp || 0) - (a.xp || 0);
       }
 
       return Number.parseFloat(b.rating) - Number.parseFloat(a.rating);
@@ -369,6 +336,12 @@ function BoosterBrowsePageContent() {
         return <Sparkles size={18} strokeWidth={2.25} />;
       case "trophy":
         return <Trophy size={18} strokeWidth={2.25} />;
+      case "psychology":
+        return <Brain size={18} strokeWidth={2.25} />;
+      case "diamond":
+        return <Diamond size={18} strokeWidth={2.25} />;
+      case "shield":
+        return <Shield size={18} strokeWidth={2.25} />;
       default:
         return <BadgeCheck size={18} strokeWidth={2.25} />;
     }
@@ -414,7 +387,17 @@ function BoosterBrowsePageContent() {
                 className="h-5 w-5 opacity-90"
               />
             </a>
-            {isClientLoggedIn ? null : (
+            {session?.user && !isBoosterLoggedIn ? (
+              <ClientProfileMenu 
+                avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
+                alt={session?.user?.name ?? "Client profile"} 
+              />
+            ) : isBoosterLoggedIn ? (
+              <BoosterProfileMenu 
+                avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
+                alt={session?.user?.name ?? "Booster profile"} 
+              />
+            ) : (
               <Button
                 type="button"
                 variant="ghost"
@@ -478,12 +461,12 @@ function BoosterBrowsePageContent() {
                 <Select
                   value={sortBy}
                   onChange={(event) =>
-                    setSortBy(event.target.value as "game" | "popularity" | "rating" | "rank")
+                    setSortBy(event.target.value as "game" | "success" | "rating" | "rank")
                   }
                   className="mt-2 w-full rounded-md border border-outline/30 bg-surface-container-high px-3 py-2 text-sm uppercase tracking-wide text-on-surface outline-none transition focus:border-primary"
                 >
                   <option value="game">Game</option>
-                  <option value="popularity">Popularity</option>
+                  <option value="success">Success</option>
                   <option value="rating">Rating</option>
                   <option value="rank">Booster Rank In Server</option>
                 </Select>
@@ -536,7 +519,7 @@ function BoosterBrowsePageContent() {
                       <div className="mb-4 flex items-start justify-between">
                         <div>
                           <h4 className="font-headline text-xl font-bold">{booster.name}</h4>
-                          <p className="text-xs uppercase tracking-widest text-on-surface-variant">
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c084fc]">
                             {booster.game}
                           </p>
                         </div>
@@ -545,13 +528,18 @@ function BoosterBrowsePageContent() {
                           <span className="font-bold">{booster.rating}</span>
                         </div>
                       </div>
-                      <div className="ghost-border flex items-center gap-3 rounded-md bg-surface-dim px-4 py-3">
-                        <span className="text-secondary">{renderRankIcon(booster.rankIcon)}</span>
-                        <span className="text-sm font-bold uppercase tracking-tight">{booster.rank}</span>
+                      <div 
+                        className="ghost-border flex items-center gap-3 rounded-md bg-surface-dim px-4 py-3"
+                        style={{ borderLeftColor: booster.rankColor, borderLeftWidth: booster.rankColor ? '3px' : '1px' }}
+                      >
+                        <span style={{ color: booster.rankColor }}>{renderRankIcon(booster.rankIcon)}</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold uppercase tracking-tight" style={{ color: booster.rankColor }}>{booster.boosterRank}</span>
+                        </div>
                       </div>
                       <div className="mt-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                        <span>Popularity</span>
-                        <span className="text-primary">{booster.popularity}%</span>
+                        <span>Success</span>
+                        <span className="text-primary">{booster.success}%</span>
                       </div>
                     </div>
                   </Link>

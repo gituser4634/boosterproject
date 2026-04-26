@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import {
   AtSign,
@@ -25,9 +26,11 @@ import {
   UserRoundCheck,
   Wallet,
   X,
+  Globe,
 } from "lucide-react";
 import { BoosterSidebar } from "@/components/booster/shell-navigation";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
+import { useNotifications } from "@/hooks/use-notifications";
 import { PickerSheet } from "@/components/booster/picker-sheet";
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
@@ -36,7 +39,14 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useBoosterAvatar } from "@/lib/use-booster-avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   defaultAvatar,
   gameRanks,
@@ -60,9 +70,11 @@ type SocialLinkEntry = {
 };
 
 export default function BoosterProfilePage() {
+  const { data: session, update } = useSession();
   const savedMainGameStorageKey = "booster-main-game";
   const router = useRouter();
   const [userId, setUserId] = useState("");
+  const [boosterId, setBoosterId] = useState("");
   const [username, setUsername] = useState("");
   const [originalUsername, setOriginalUsername] = useState("");
   const [isUsernameUnique, setIsUsernameUnique] = useState<boolean | null>(true);
@@ -72,11 +84,17 @@ export default function BoosterProfilePage() {
   const [isOnline, setIsOnline] = useState(true);
   const [isNotificationsOn, setIsNotificationsOn] = useState(true);
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const { 
+    notifications: realNotifications, 
+    unreadCount: realUnreadCount, 
+    markAllAsRead 
+  } = useNotifications();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const { avatarUrl, setBoosterAvatarUrl, resetBoosterAvatarUrl } = useBoosterAvatar(defaultAvatar);
+  const avatarUrl = session?.user?.image ?? defaultAvatar;
   const [uiMessage, setUiMessage] = useState("Loading profile...");
   const [isSaving, setIsSaving] = useState(false);
+  const [bio, setBio] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("0");
   const [languages, setLanguages] = useState<string[]>([]);
   const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
   const [languageToAdd, setLanguageToAdd] = useState("");
@@ -97,9 +115,15 @@ export default function BoosterProfilePage() {
   const [savedPrimaryGame, setSavedPrimaryGame] = useState("");
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [isDeactivated, setIsDeactivated] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
   const [draftAvatarUrl, setDraftAvatarUrl] = useState(avatarUrl);
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
+  const [tempValue, setTempValue] = useState("");
+  const [isTempUsernameUnique, setIsTempUsernameUnique] = useState<boolean | null>(true);
+  const [isCheckingTempUsername, setIsCheckingTempUsername] = useState(false);
   const [hasPendingAvatarChange, setHasPendingAvatarChange] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const isLoggedInBooster = true;
   const [passwordFields, setPasswordFields] = useState({
     current: "",
@@ -109,30 +133,63 @@ export default function BoosterProfilePage() {
 
   // Load real user data on mount
   useEffect(() => {
+    if (!session?.user) return;
+
+    // Populate core identity fields directly from session (always reliable)
+    setUserId(session.user.id ?? "");
+    setUsername((session.user as any).username ?? "");
+    setOriginalUsername((session.user as any).username ?? "");
+    setAlias(session.user.name ?? "");
+    if ((session.user as any).email) setEmail((session.user as any).email);
+
+    // Fetch full profile for booster-specific data (bio, games, languages, etc.)
     const loadUser = async () => {
       try {
         const res = await fetch("/api/auth/me");
-        if (!res.ok) { showStatus("Not logged in. Please sign in first."); return; }
+        if (!res.ok) {
+          // Session works fine, just couldn't enrich booster data
+          setIsLoading(false);
+          return;
+        }
         const data = await res.json();
         const u = data.user;
-        setUserId(u.id ?? "");
-        setUsername(u.username ?? "");
-        setOriginalUsername(u.username ?? "");
-        setAlias(u.displayName ?? "");
-        setEmail(u.email ?? "");
+        setUserProfile(u);
+        if (u.email) setEmail(u.email);
         if (u.boosterProfile) {
           const bp = u.boosterProfile;
+          setBoosterId(bp.id ?? "");
           setCountryOfOrigin(bp.country ?? "");
           setLanguages(bp.languages?.map((l: { language: string }) => l.language) ?? []);
+          setBio(bp.bio ?? "");
+          setHourlyRate(bp.hourlyRate ? bp.hourlyRate.toString() : "0");
+          console.log("Loading booster profile main game:", bp.mainGame);
+          if (bp.mainGame) {
+            setPrimaryGame(bp.mainGame.name);
+            setSavedPrimaryGame(bp.mainGame.name);
+            window.localStorage.setItem(savedMainGameStorageKey, bp.mainGame.name);
+          } else if (bp.mainGameId) {
+            console.warn("Main game ID exists but relation is null:", bp.mainGameId);
+          }
+          if (bp.boosterGames) {
+            setActiveGames(bp.boosterGames.map((bg: any, index: number) => ({
+              id: index + 1,
+              name: bg.game.name,
+              rank: bg.rank.name,
+              accountId: bg.inGameUsername || ""
+            })));
+            setNextGameId(bp.boosterGames.length + 1);
+          }
         }
         showStatus("Profile loaded.");
       } catch {
-        showStatus("Failed to load profile.");
+        // Silently fail enrichment — session data is still shown
+      } finally {
+        setIsLoading(false);
       }
     };
     loadUser();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [session]);
   const notifications: NotificationItem[] = [
     { id: "request", title: "New boost request assigned", meta: "Valorant ��� 2 min ago" },
     { id: "message", title: "Client sent you a message", meta: "Inbox ��� 14 min ago" },
@@ -193,7 +250,7 @@ export default function BoosterProfilePage() {
   };
 
   const handleMarkNotificationsRead = () => {
-    setUnreadNotificationCount(0);
+    markAllAsRead();
     showStatus("Notifications marked as read.");
   };
 
@@ -204,7 +261,7 @@ export default function BoosterProfilePage() {
     }
 
     if (action === "Logout") {
-      router.push("/");
+      await signOut({ callbackUrl: "/" });
       return;
     }
 
@@ -232,7 +289,7 @@ export default function BoosterProfilePage() {
     showStatus("Avatar reset in preview. Apply settings to save.");
   };
 
-  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (isDeactivated) {
       showStatus("Account is deactivated. Avatar cannot be changed.");
       event.target.value = "";
@@ -251,33 +308,41 @@ export default function BoosterProfilePage() {
       return;
     }
 
-    const maxFileSizeInBytes = 1024 * 1024;
-    if (selectedFile.size > maxFileSizeInBytes) {
-      showStatus("Image must be 1MB or smaller.");
+    const maxFileSize = 2 * 1024 * 1024; // 2MB
+    if (selectedFile.size > maxFileSize) {
+      showStatus("Image must be 2MB or smaller.");
       event.target.value = "";
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      if (!result) {
-        showStatus("Failed to read image file.");
-        return;
+    showStatus("Uploading image to storage...");
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Upload failed");
       }
 
-      setDraftAvatarUrl(result);
-      setHasPendingAvatarChange(result !== avatarUrl);
-      showStatus("Avatar updated in preview. Apply settings to save.");
-    };
-    reader.onerror = () => {
-      showStatus("Failed to read image file.");
-    };
-    reader.readAsDataURL(selectedFile);
-    event.target.value = "";
+      setDraftAvatarUrl(data.publicUrl);
+      setHasPendingAvatarChange(true);
+      showStatus("Avatar uploaded to storage. Click Apply to save to your profile.");
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      showStatus(`Upload failed: ${error.message || 'Unknown error'}`);
+    } finally {
+      event.target.value = "";
+    }
   };
 
-  const handleApplyAvatarSettings = () => {
+  const handleApplyAvatarSettings = async () => {
     if (isDeactivated) {
       showStatus("Account is deactivated. Avatar cannot be changed.");
       return;
@@ -288,25 +353,33 @@ export default function BoosterProfilePage() {
       return;
     }
 
-    if (draftAvatarUrl === defaultAvatar) {
-      const isReset = resetBoosterAvatarUrl();
-      if (!isReset) {
-        showStatus("Avatar update failed. Please try again.");
-        return;
+    showStatus("Saving avatar to profile...");
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profilePictureUrl: draftAvatarUrl }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Failed to save avatar URL to database.");
       }
+
+      // Also update session to reflect new image immediately in header
+      await update({
+        ...session,
+        user: {
+          ...session?.user,
+          image: draftAvatarUrl
+        }
+      });
       setHasPendingAvatarChange(false);
-      showStatus("Avatar reset to default.");
-      return;
+      showStatus("Avatar updated successfully.");
+    } catch (error: any) {
+      console.error("Avatar save error:", error);
+      showStatus(`Failed to save avatar: ${error.message}`);
     }
-
-    const isSaved = setBoosterAvatarUrl(draftAvatarUrl);
-    if (!isSaved) {
-      showStatus("Avatar update failed. Please try a smaller image.");
-      return;
-    }
-
-    setHasPendingAvatarChange(false);
-    showStatus("Avatar updated successfully.");
   };
 
   useEffect(() => {
@@ -338,6 +411,31 @@ export default function BoosterProfilePage() {
     const timer = setTimeout(checkUsername, 500);
     return () => clearTimeout(timer);
   }, [username, originalUsername]);
+  
+  useEffect(() => {
+    if (openDialog !== 'username' || !tempValue || tempValue === originalUsername) {
+      setIsTempUsernameUnique(true);
+      return;
+    }
+    
+    const check = async () => {
+      setIsCheckingTempUsername(true);
+      try {
+        const res = await fetch(`/api/profile/check-username?username=${encodeURIComponent(tempValue)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setIsTempUsernameUnique(data.available);
+        }
+      } catch (err) {
+        console.error("Check error:", err);
+      } finally {
+        setIsCheckingTempUsername(false);
+      }
+    };
+    
+    const timer = setTimeout(check, 500);
+    return () => clearTimeout(timer);
+  }, [tempValue, openDialog, originalUsername]);
 
   const handleOpenLanguagePicker = () => {
     if (isDeactivated) {
@@ -367,15 +465,18 @@ export default function BoosterProfilePage() {
   const handleSetCountryFromPicker = () => {
     setCountryOfOrigin(countryToSet);
     setIsCountryPickerOpen(false);
-    showStatus(`Country of origin set to ${countryToSet}.`);
+    setTimeout(() => handleSaveAllSettings("identity", { countryOfOrigin: countryToSet }), 0);
   };
 
   const handleAddLanguageFromPicker = () => {
     if (!languageToAdd) return;
 
-    setLanguages((current) => [...current, languageToAdd]);
+    setLanguages((current) => {
+      const next = [...current, languageToAdd];
+      setTimeout(() => handleSaveAllSettings("identity", { languages: next }), 0);
+      return next;
+    });
     setIsLanguagePickerOpen(false);
-    showStatus(`Language added: ${languageToAdd}`);
   };
 
   const handleRemoveLanguage = (name: string) => {
@@ -384,30 +485,147 @@ export default function BoosterProfilePage() {
       return;
     }
 
-    setLanguages((current) => current.filter((item) => item !== name));
-    showStatus(`Language removed: ${name}`);
+    setLanguages((current) => {
+      const next = current.filter((item) => item !== name);
+      setTimeout(() => handleSaveAllSettings("identity", { languages: next }), 0);
+      return next;
+    });
+  };
+
+  const openEdit = (field: string, currentVal: string) => {
+    setOpenDialog(field);
+    setTempValue(currentVal);
+  };
+
+  const saveField = async () => {
+    if (isDeactivated) return;
+    
+    const overrides: any = {};
+    
+    // Update local state first
+    if (openDialog === "username") {
+      if (!isTempUsernameUnique) return;
+      setUsername(tempValue);
+      overrides.username = tempValue;
+    } else if (openDialog === "alias") {
+      setAlias(tempValue);
+      overrides.alias = tempValue;
+    } else if (openDialog === "email") {
+      setEmail(tempValue);
+      overrides.email = tempValue;
+    } else if (openDialog === "bio") {
+      setBio(tempValue);
+      overrides.bio = tempValue;
+    } else if (openDialog === "country") {
+      setCountryOfOrigin(tempValue);
+      overrides.countryOfOrigin = tempValue;
+    } else if (openDialog === "hourlyRate") {
+      setHourlyRate(tempValue);
+      overrides.hourlyRate = tempValue;
+    } else if (openDialog === "primaryGame") {
+      setPrimaryGame(tempValue);
+      overrides.primaryGame = tempValue;
+    }
+
+    setOpenDialog(null);
+    // Trigger global save to sync with DB
+    setTimeout(() => handleSaveAllSettings("identity", overrides), 0);
+  };
+
+  const handleSaveAllSettings = async (section: "identity" | "expertise", overrides: any = {}) => {
+    setIsSaving(true);
+    try {
+      // 1. Update User Account (username, email, user.displayName)
+      const resUser = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          username: overrides.username !== undefined ? overrides.username : username, 
+          displayName: overrides.alias !== undefined ? overrides.alias : alias, 
+          email: overrides.email !== undefined ? overrides.email : email 
+        }),
+      });
+      
+      if (!resUser.ok) {
+        const data = await resUser.json();
+        showStatus(data.error ?? "User update failed.");
+        setIsSaving(false);
+        return;
+      }
+
+      // 2. Update Booster Details (alias, bio, country, languages, mainGame, activeGames)
+      const resBooster = await fetch("/api/profile/booster", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          alias: overrides.alias !== undefined ? overrides.alias : alias,
+          bio: overrides.bio !== undefined ? overrides.bio : bio,
+          country: overrides.countryOfOrigin !== undefined ? overrides.countryOfOrigin : countryOfOrigin,
+          languages: overrides.languages !== undefined ? overrides.languages : languages,
+          hourlyRate: overrides.hourlyRate !== undefined ? overrides.hourlyRate : hourlyRate,
+          mainGameName: overrides.primaryGame !== undefined ? overrides.primaryGame : primaryGame,
+          activeGames: (overrides.activeGames || activeGames).map((g: any) => ({ name: g.name, rank: g.rank, accountId: g.accountId }))
+        }),
+      });
+
+      if (!resBooster.ok) {
+        const data = await resBooster.json();
+        showStatus(data.error ?? "Booster profile update failed.");
+        setIsSaving(false);
+        return;
+      }
+
+      const finalUsername = overrides.username !== undefined ? overrides.username : username;
+      const finalPrimaryGame = overrides.primaryGame !== undefined ? overrides.primaryGame : primaryGame;
+
+      setOriginalUsername(finalUsername);
+      setSavedPrimaryGame(finalPrimaryGame);
+      window.localStorage.setItem(savedMainGameStorageKey, finalPrimaryGame);
+      
+      // Refresh session for alias/pfp changes
+      await update();
+      
+      // Re-load profile from DB to ensure UI is perfectly synced
+      const resRefresh = await fetch("/api/auth/me");
+      if (resRefresh.ok) {
+        const data = await resRefresh.json();
+        const u = data.user;
+        setUserProfile(u);
+        if (u.boosterProfile) {
+          const bp = u.boosterProfile;
+          if (bp.mainGame) {
+             setPrimaryGame(bp.mainGame.name);
+             setSavedPrimaryGame(bp.mainGame.name);
+             window.localStorage.setItem(savedMainGameStorageKey, bp.mainGame.name);
+          }
+          if (bp.boosterGames) {
+            setActiveGames(bp.boosterGames.map((bg: any, index: number) => ({
+              id: index + 1,
+              name: bg.game.name,
+              rank: bg.rank.name,
+              accountId: bg.inGameUsername || ""
+            })));
+          }
+        }
+      }
+
+      showStatus(section === "identity" ? "Identity and account details saved." : "Expertise and active games saved.");
+    } catch (err) {
+      console.error("Save error:", err);
+      showStatus("Network error. Try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCredentialsUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isDeactivated) { showStatus("Account is deactivated. Profile updates are disabled."); return; }
-    if (username && !isUsernameUnique) { showStatus("Choose an available username first."); return; }
-    setIsSaving(true);
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, displayName: alias, email }),
-      });
-      const data = await res.json();
-      if (!res.ok) { showStatus(data.error ?? "Save failed."); return; }
-      setOriginalUsername(username);
-      showStatus("Identity details saved.");
-    } catch {
-      showStatus("Network error. Try again.");
-    } finally {
-      setIsSaving(false);
+    if (username && !isUsernameUnique && username !== originalUsername) { 
+      showStatus("Choose an available username first."); 
+      return; 
     }
+    await handleSaveAllSettings("identity");
   };
 
   const handleCloseGame = (gameId: number) => {
@@ -421,6 +639,13 @@ export default function BoosterProfilePage() {
       const next = current.filter((game) => game.id !== gameId);
       if (gameToRemove) {
         showStatus(`${gameToRemove.name} removed from active list.`);
+        // If the removed game was the primary game, clear it
+        if (gameToRemove.name === primaryGame) {
+          setPrimaryGame("");
+          setSavedPrimaryGame("");
+          window.localStorage.removeItem(savedMainGameStorageKey);
+          showStatus(`Warning: ${gameToRemove.name} was your Primary Game. It has been unset.`);
+        }
       }
       return next;
     });
@@ -439,36 +664,44 @@ export default function BoosterProfilePage() {
 
     const firstGame = availableGames[0];
     setGameToAdd(firstGame);
-    setRankToAdd(gameRanks[firstGame][0]);
+    setRankToAdd(gameRanks[firstGame]?.[0] || "");
     setIsGamePickerOpen(true);
   };
 
   const handleGameSelectionChange = (game: string) => {
     setGameToAdd(game);
-    setRankToAdd(gameRanks[game][0]);
+    setRankToAdd(gameRanks[game]?.[0] || "");
   };
 
   const handleAddGameFromPicker = () => {
     if (!gameToAdd) return;
 
-    setActiveGames((current) => [
-      ...current,
-      {
-        id: nextGameId,
-        name: gameToAdd,
-        rank: rankToAdd || gameRanks[gameToAdd][0],
-        accountId: "",
-      },
-    ]);
+    const newGame = {
+      id: nextGameId,
+      name: gameToAdd,
+      rank: rankToAdd || gameRanks[gameToAdd]?.[0] || "",
+      accountId: "",
+    };
+
+    setActiveGames((current) => {
+      const next = [...current, newGame];
+      // Auto-save whenever a game is added
+      setTimeout(() => handleSaveAllSettings("expertise", { activeGames: next }), 100);
+      return next;
+    });
+    
     setNextGameId((current) => current + 1);
     setIsGamePickerOpen(false);
-    showStatus(`${gameToAdd} added to active games.`);
+    showStatus(`${gameToAdd} added to active games. Saving...`);
   };
 
   const handleGameRankChange = (gameId: number, rank: string) => {
-    setActiveGames((current) =>
-      current.map((game) => (game.id === gameId ? { ...game, rank } : game))
-    );
+    setActiveGames((current) => {
+      const next = current.map((game) => (game.id === gameId ? { ...game, rank } : game));
+      // Auto-save on rank change
+      setTimeout(() => handleSaveAllSettings("expertise", { activeGames: next }), 100);
+      return next;
+    });
   };
 
   const handleGameAccountIdChange = (gameId: number, accountId: string) => {
@@ -479,27 +712,17 @@ export default function BoosterProfilePage() {
 
   const handleSaveExpertise = async () => {
     if (isDeactivated) { showStatus("Account is deactivated. Service expertise cannot be saved."); return; }
-    const trimmedGame = primaryGame.trim();
-    setSavedPrimaryGame(trimmedGame);
-    window.localStorage.setItem(savedMainGameStorageKey, trimmedGame);
-    // Also save languages and country to booster profile
-    try {
-      await fetch("/api/profile/booster", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country: countryOfOrigin, languages }),
-      });
-      showStatus("Expertise and profile saved.");
-    } catch {
-      showStatus("Expertise saved locally. Network error on server save.");
-    }
+    await handleSaveAllSettings("expertise");
   };
 
   useEffect(() => {
+    // We only load from localStorage as a temporary fallback, but loadUser will overwrite with DB truth
     const savedGame = window.localStorage.getItem(savedMainGameStorageKey) ?? "";
-    setSavedPrimaryGame(savedGame);
-    setPrimaryGame(savedGame);
-  }, []);
+    if (savedGame && !primaryGame) {
+      setSavedPrimaryGame(savedGame);
+      setPrimaryGame(savedGame);
+    }
+  }, [primaryGame]);
 
   const handleOpenSocialPicker = () => {
     if (isDeactivated) {
@@ -632,13 +855,24 @@ export default function BoosterProfilePage() {
     showStatus("Account deactivated locally.");
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background text-on-surface">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="font-label text-xs font-bold uppercase tracking-widest text-primary">Loading Profile...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <BoosterTopBar
         avatarUrl={avatarUrl}
         avatarAlt="Booster Profile Avatar"
         isNotificationsOn={isNotificationsOn}
-        unreadNotificationCount={unreadNotificationCount}
+        unreadNotificationCount={realUnreadCount}
         isNotificationsPanelOpen={isNotificationsPanelOpen}
         onToggleNotificationsPanel={() => {
           setIsProfileMenuOpen(false);
@@ -647,7 +881,7 @@ export default function BoosterProfilePage() {
         onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
         onToggleNotifications={handleNotificationToggle}
         onMarkNotificationsRead={handleMarkNotificationsRead}
-        notifications={notifications}
+        notifications={realNotifications}
         isProfileMenuOpen={isProfileMenuOpen}
         onToggleProfileMenu={() => {
           setIsNotificationsPanelOpen(false);
@@ -662,7 +896,9 @@ export default function BoosterProfilePage() {
           active="dashboard"
           isOnline={isOnline}
           onToggleOnline={handleToggleOnline}
-          mainGame={savedPrimaryGame}
+          mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
+          rankInfo={userProfile?.boosterProfile?.rankInfo}
+          xp={userProfile?.boosterProfile?.xp}
         />
       ) : null}
 
@@ -797,15 +1033,15 @@ export default function BoosterProfilePage() {
                   <h2 className="font-headline text-2xl font-bold">Identity Details</h2>
                 </div>
                 <div className="flex items-center gap-2 rounded-md border border-white/5 bg-surface-container-lowest px-3 py-1.5">
-                  <span className="font-mono text-xs text-on-surface-variant">ID: {userId ? userId.slice(0, 20) + "…" : "—"}</span>
+                  <span className="font-mono text-xs text-on-surface-variant">Booster UID: {boosterId ? boosterId.slice(0, 20) + "…" : "—"}</span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 text-on-surface-variant hover:text-primary"
                     onClick={() => {
-                      navigator.clipboard.writeText(userId);
-                      showStatus("Internal UID copied to clipboard.");
+                      navigator.clipboard.writeText(boosterId);
+                      showStatus("Booster UID copied to clipboard.");
                     }}
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -813,161 +1049,166 @@ export default function BoosterProfilePage() {
                 </div>
               </div>
 
-              <form className="space-y-6" onSubmit={handleCredentialsUpdate}>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                      Username
-                    </Label>
-                    {isCheckingUsername ? (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Checking...</span>
-                    ) : username ? (
-                      isUsernameUnique ? (
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Available</span>
-                      ) : (
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-error">Taken</span>
-                      )
-                    ) : null}
-                  </div>
-                  <Input
-                    className={`ghost-border w-full rounded-sm border ${username && !isUsernameUnique && !isCheckingUsername ? "border-error focus:ring-error" : "border-none focus:ring-primary"} bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1`}
-                    placeholder="foreign111"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                  />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                   <div>
+                     <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Username</Label>
+                     <p className="text-sm font-bold text-on-surface">@{username}</p>
+                   </div>
+                   <Button 
+                     variant="ghost" 
+                     size="sm" 
+                     className="text-primary hover:bg-primary/10"
+                     onClick={() => openEdit("username", username)}
+                   >
+                     <Edit3 className="h-4 w-4 mr-2" /> Edit
+                   </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Alias
-                  </Label>
-                  <Input
-                    className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
-                    placeholder="Foreign"
-                    type="text"
-                    value={alias}
-                    onChange={(e) => setAlias(e.target.value)}
-                  />
+
+                <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                   <div>
+                     <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Alias / Display Name</Label>
+                     <p className="text-sm font-bold text-on-surface">{alias}</p>
+                   </div>
+                   <Button 
+                     variant="ghost" 
+                     size="sm" 
+                     className="text-primary hover:bg-primary/10"
+                     onClick={() => openEdit("alias", alias)}
+                   >
+                     <Edit3 className="h-4 w-4 mr-2" /> Edit
+                   </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Email Address
-                  </Label>
-                  <Input
-                    className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
-                    placeholder="your@email.com"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+
+                <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                   <div>
+                     <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Email Address</Label>
+                     <p className="text-sm font-bold text-on-surface">{email}</p>
+                   </div>
+                   <Button 
+                     variant="ghost" 
+                     size="sm" 
+                     className="text-primary hover:bg-primary/10"
+                     onClick={() => openEdit("email", email)}
+                   >
+                     <Edit3 className="h-4 w-4 mr-2" /> Edit
+                   </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Country of Origin
-                  </Label>
-                  <div className="ghost-border flex items-center gap-2 rounded-sm bg-surface-container-lowest px-3 py-2">
-                    <Input
-                      className="w-full border-none bg-transparent p-0 text-sm text-on-surface focus:ring-0"
-                      type="text"
-                      value={countryOfOrigin}
-                      readOnly
-                    />
-                    <Button
-                      type="button"
-                      onClick={handleOpenCountryPicker}
-                      className="rounded border border-cyan-400/40 bg-cyan-400/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition-colors hover:bg-cyan-400/25"
-                    >
-                      Pick
-                    </Button>
-                  </div>
+
+                <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                   <div>
+                     <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Country</Label>
+                     <p className="text-sm font-bold text-on-surface">{countryOfOrigin || "Not Set"}</p>
+                   </div>
+                   <Button 
+                     variant="ghost" 
+                     size="sm" 
+                     className="text-primary hover:bg-primary/10"
+                     onClick={handleOpenCountryPicker}
+                   >
+                     <Globe className="h-4 w-4 mr-2" /> Change
+                   </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Bio Description
-                  </Label>
-                  <Textarea
-                    className="ghost-border min-h-[120px] w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
-                    placeholder="Write about your professional experience, playstyle, and achievements..."
-                  />
+
+                <div className="p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                   <div className="flex items-center justify-between mb-3">
+                     <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Languages</Label>
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       className="text-primary hover:bg-primary/10 h-7"
+                       onClick={handleOpenLanguagePicker}
+                     >
+                       <Plus className="h-3.5 w-3.5 mr-1" /> Add
+                     </Button>
+                   </div>
+                   <div className="flex flex-wrap gap-2">
+                     {languages.length > 0 ? languages.map(lang => (
+                       <div key={lang} className="flex items-center gap-1.5 px-2 py-1 rounded border border-primary/20 bg-primary/10 text-[10px] font-bold text-primary">
+                         {lang}
+                         <button onClick={() => handleRemoveLanguage(lang)} className="hover:text-white transition-colors">
+                            <X className="h-3 w-3" />
+                         </button>
+                       </div>
+                     )) : (
+                       <p className="text-xs italic text-on-surface-variant opacity-60">No languages added.</p>
+                     )}
+                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Languages Spoken
-                  </Label>
-                  <div className="ghost-border flex w-full flex-wrap gap-2 rounded-sm bg-surface-container-lowest px-3 py-2 text-on-surface transition-all focus-within:ring-1 focus-within:ring-primary">
-                    {languages.map((name) => (
-                      <div
-                        key={name}
-                        className="flex items-center gap-1.5 rounded border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary"
-                      >
-                        {name}
-                        <Button
-                          type="button"
-                          onClick={() => handleRemoveLanguage(name)}
-                          className="cursor-pointer text-primary/80 hover:text-white"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Input
-                      className="min-w-[80px] flex-grow border-none bg-transparent p-0 text-sm text-on-surface-variant focus:ring-0"
-                      placeholder="Use Pick to add language"
-                      type="text"
-                      readOnly
-                    />
-                    <Button
-                      type="button"
-                      onClick={handleOpenLanguagePicker}
-                      className="rounded border border-cyan-400/40 bg-cyan-400/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition-colors hover:bg-cyan-400/25"
-                    >
-                      Pick
-                    </Button>
-                  </div>
-                </div>
-                <div className="pt-4">
-                  <Button
-                    type="submit"
-                    className="primary-gradient font-label rounded-md px-8 py-3 text-sm font-extrabold uppercase tracking-wider text-on-primary-fixed shadow-[0_0_20px_rgba(143,245,255,0.2)] transition-transform active:scale-95"
-                  >
-                    Update Credentials
-                  </Button>
-                </div>
-              </form>
+              </div>
             </div>
 
             <div className="ghost-border rounded-xl bg-surface-container-low p-8 md:col-span-5">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="rounded-lg bg-secondary/10 p-3">
+                  <UserRoundCheck className="h-5 w-5 text-secondary" />
+                </div>
+                <h2 className="font-headline text-2xl font-bold">Profile Info</h2>
+              </div>
+              <div className="space-y-6">
+                <div className="p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                   <div className="flex items-center justify-between mb-2">
+                     <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Profile Bio</Label>
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       className="text-primary hover:bg-primary/10 h-7"
+                       onClick={() => openEdit("bio", bio)}
+                     >
+                       <Edit3 className="h-3.5 w-3.5 mr-1" /> Edit
+                     </Button>
+                   </div>
+                   <p className="text-sm leading-relaxed text-on-surface opacity-80 line-clamp-6 min-h-[80px]">
+                     {bio || "No bio set. Add one to attract more clients."}
+                   </p>
+                </div>
+
+                <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                   <div>
+                     <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Hourly Rate</Label>
+                     <p className="text-sm font-bold text-on-surface">${hourlyRate}/hr</p>
+                   </div>
+                   <Button 
+                     variant="ghost" 
+                     size="sm" 
+                     className="text-primary hover:bg-primary/10"
+                     onClick={() => openEdit("hourlyRate", hourlyRate)}
+                   >
+                     <Edit3 className="h-4 w-4 mr-2" /> Edit
+                   </Button>
+                </div>
+              </div>
+            </div>
+
+
+            <div className="ghost-border rounded-xl bg-surface-container-low p-8 md:col-span-12">
               <div className="mb-8 flex items-center gap-4">
                 <div className="rounded-lg bg-tertiary/10 p-3">
                   <Gamepad2 className="h-5 w-5 text-tertiary" />
                 </div>
                 <h2 className="font-headline text-2xl font-bold">Service Expertise</h2>
               </div>
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Primary Game
-                  </Label>
-                  <Select
-                    className="ghost-border h-10 w-full cursor-pointer appearance-none rounded-sm border-none bg-surface-container-lowest px-4 text-xs font-bold text-on-surface transition-all focus:ring-1 focus:ring-tertiary"
-                    value={primaryGame}
-                    onChange={(event) => setPrimaryGame(event.target.value)}
-                  >
-                    <option value="" disabled>
-                      Select primary game
-                    </option>
-                    <option>Valorant</option>
-                    <option>Apex Legends</option>
-                    <option>League of Legends</option>
-                    <option>Counter-Strike 2</option>
-                    <option>Dota 2</option>
-                  </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                   <div>
+                     <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Primary Game</Label>
+                     <p className="text-sm font-bold text-on-surface">{primaryGame || "Not Set"}</p>
+                   </div>
+                   <Button 
+                     variant="ghost" 
+                     size="sm" 
+                     className="text-primary hover:bg-primary/10"
+                     onClick={() => openEdit("primaryGame", primaryGame)}
+                   >
+                     <Edit3 className="h-4 w-4 mr-2" /> Edit
+                   </Button>
                 </div>
-
-                <div className="space-y-3">
-                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Active GAMES &amp; Ranks
-                  </Label>
+              </div>
+              
+              <div className="mt-8 space-y-4">
+                <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                  Active GAMES &amp; Ranks
+                </Label>
                   <div className="flex flex-col gap-4">
                     {activeGames.map((game) => (
                       <div key={game.id} className="space-y-2">
@@ -981,11 +1222,17 @@ export default function BoosterProfilePage() {
                               value={game.rank}
                               onChange={(event) => handleGameRankChange(game.id, event.target.value)}
                             >
-                              {gameRanks[game.name].map((rank) => (
-                                <option key={`${game.id}-${rank}`} className="bg-background text-on-surface">
-                                  {rank}
+                              {gameRanks[game.name] ? (
+                                gameRanks[game.name].map((rank) => (
+                                  <option key={`${game.id}-${rank}`} className="bg-background text-on-surface">
+                                    {rank}
+                                  </option>
+                                ))
+                              ) : (
+                                <option className="bg-background text-on-surface" disabled>
+                                  No ranks defined
                                 </option>
-                              ))}
+                              )}
                             </Select>
                           </div>
                           <Button
@@ -1023,17 +1270,9 @@ export default function BoosterProfilePage() {
                   </div>
                 </div>
 
-                <div className="pt-2">
-                  <Button
-                    type="button"
-                    onClick={handleSaveExpertise}
-                    className="w-full rounded-md border border-tertiary/20 bg-transparent px-6 py-3 font-label text-xs font-bold uppercase tracking-widest text-tertiary transition-all hover:border-tertiary hover:bg-tertiary/5"
-                  >
-                    Save
-                  </Button>
-                </div>
-              </div>
             </div>
+
+
 
             <div className="ghost-border rounded-xl bg-surface-container-low p-8 md:col-span-12 lg:col-span-6">
               <div className="mb-8 flex items-center gap-4">
@@ -1472,6 +1711,101 @@ export default function BoosterProfilePage() {
           </Button>
         </div>
       </PickerSheet>
+      <Dialog open={!!openDialog} onOpenChange={() => setOpenDialog(null)}>
+        <DialogContent className="sm:max-w-[425px] border-white/10 bg-[#0c0e14] text-white shadow-[0_0_50px_rgba(34,211,238,0.15)]">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-xl font-bold uppercase tracking-widest text-primary">Edit {openDialog?.replace(/([A-Z])/g, ' $1')}</DialogTitle>
+            <DialogDescription className="text-on-surface-variant">
+              {openDialog === 'bio' ? `Max 200 characters. Current: ${tempValue.length}/200` : 
+               openDialog === 'username' || openDialog === 'alias' ? 'Max 25 characters.' : 'Update your profile information below.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-6">
+            {openDialog === 'bio' ? (
+              <Textarea 
+                value={tempValue} 
+                onChange={(e) => setTempValue(e.target.value.slice(0, 200))}
+                className="ghost-border min-h-[120px] w-full resize-none rounded-lg border-none bg-surface-container-highest px-4 py-3 text-on-surface focus:ring-1 focus:ring-primary"
+                placeholder="Write your bio..."
+              />
+            ) : openDialog === 'primaryGame' ? (
+              <div className="space-y-3">
+                {activeGames.length > 0 ? (
+                  <>
+                    <Select
+                      className="ghost-border h-12 w-full cursor-pointer rounded-lg border-none bg-surface-container-highest px-4 text-sm font-bold text-on-surface focus:ring-1 focus:ring-primary"
+                      value={tempValue}
+                      onChange={(e) => setTempValue(e.target.value)}
+                    >
+                      <option value="" disabled>Select from your expertise</option>
+                      {Array.from(new Set(activeGames.map(g => g.name))).map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </Select>
+                    <p className="text-[10px] text-on-surface-variant italic">
+                      Only games currently in your "Service Expertise" section can be set as primary.
+                    </p>
+                  </>
+                ) : (
+                  <div className="p-4 rounded-lg bg-error/10 border border-error/20 text-error text-[10px] font-bold uppercase tracking-wider text-center">
+                    You must add at least one game to your expertise first.
+                  </div>
+                )}
+              </div>
+            ) : openDialog === 'email' ? (
+               <Input 
+                type="email"
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+                className="ghost-border h-12 w-full rounded-lg border-none bg-surface-container-highest px-4 text-on-surface focus:ring-1 focus:ring-primary"
+              />
+            ) : openDialog === 'hourlyRate' ? (
+               <Input 
+                type="number"
+                step="0.01"
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+                className="ghost-border h-12 w-full rounded-lg border-none bg-surface-container-highest px-4 text-on-surface focus:ring-1 focus:ring-primary"
+              />
+            ) : (
+              <div className="space-y-2">
+                <Input 
+                  value={tempValue}
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (openDialog === 'username' || openDialog === 'alias') val = val.slice(0, 25);
+                    setTempValue(val);
+                  }}
+                  className="ghost-border h-12 w-full rounded-lg border-none bg-surface-container-highest px-4 text-on-surface focus:ring-1 focus:ring-primary"
+                />
+                {openDialog === 'username' && (
+                   <div className="flex justify-end pt-1">
+                      {isCheckingTempUsername ? (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Checking...</span>
+                      ) : tempValue && tempValue !== originalUsername ? (
+                        isTempUsernameUnique ? (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Available</span>
+                        ) : (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-error">Taken</span>
+                        )
+                      ) : null}
+                   </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-3">
+             <Button variant="ghost" onClick={() => setOpenDialog(null)} className="font-bold uppercase tracking-wider">Cancel</Button>
+             <Button 
+               onClick={saveField}
+               disabled={isSaving || (openDialog === 'username' && !isTempUsernameUnique)}
+               className="cta-flame-soft cta-flame-soft-primary px-8 font-bold uppercase tracking-widest"
+             >
+               {isSaving ? "Saving..." : "Save Change"}
+             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -11,6 +11,13 @@ type BoosterSidebarProps = {
   isOnline: boolean;
   onToggleOnline: () => void;
   mainGame?: string;
+  rankInfo?: {
+    name: string;
+    color: string;
+    icon: string;
+    minXp: number;
+  };
+  xp?: number;
 };
 
 type BoosterMobileNavProps = {
@@ -32,26 +39,34 @@ const getIcon = (key: BoosterSection) => {
   return <MessageSquare className="h-5 w-5" />;
 };
 
-function BoosterSidebar({ active, isOnline, onToggleOnline, mainGame }: BoosterSidebarProps) {
+function BoosterSidebar({ active, isOnline, onToggleOnline, mainGame, rankInfo, xp = 0 }: BoosterSidebarProps) {
   const sidebarMainGame = mainGame?.trim() || "Not Set";
+  const currentRank = rankInfo || { name: "ROOKIE", color: "#CD7F32", icon: "military_tech", minXp: 0 };
+  
+  // Calculate next rank and progress
+  const { BOOSTER_RANKS } = require("@/lib/booster-ranks");
+  const nextRank = BOOSTER_RANKS.find((r: any) => r.minXp > currentRank.minXp) || null;
+  const xpInLevel = xp - currentRank.minXp;
+  const xpNeededForNext = nextRank ? nextRank.minXp - currentRank.minXp : 1000; // arbitrary large number if at max rank
+  const progressPct = nextRank ? Math.min(Math.floor((xpInLevel / xpNeededForNext) * 100), 100) : 100;
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r border-white/15 bg-[#04060a]/95 pt-20 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_24px_60px_rgba(0,0,0,0.6)] backdrop-blur-md">
       <div className="mb-4 flex flex-col items-center border-b border-white/5 px-6 py-4">
-        <div className="ghost-border mb-2 flex h-16 w-16 items-center justify-center rounded-xl bg-surface-container-highest">
-          <Crown className="h-8 w-8 text-[#b87333]" />
+        <div className="ghost-border mb-2 flex h-16 w-16 items-center justify-center rounded-xl bg-surface-container-highest" style={{ borderColor: `${currentRank.color}44` }}>
+          <Crown className="h-8 w-8" style={{ color: currentRank.color }} />
         </div>
-        <h3 className="font-headline font-bold text-on-surface">ROOKIE</h3>
+        <h3 className="font-headline font-bold text-on-surface" style={{ color: currentRank.color }}>{currentRank.name}</h3>
         <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">Main Game: {sidebarMainGame}</p>
         <div className="mt-3 w-full space-y-1.5">
           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-            <span>Rookie XP</span>
-            <span>0%</span>
+            <span>{currentRank.name} XP</span>
+            <span>{progressPct}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-highest">
-            <div className="primary-gradient h-full w-[0%]"></div>
+            <div className="h-full" style={{ width: `${progressPct}%`, backgroundColor: currentRank.color, boxShadow: `0 0 10px ${currentRank.color}66` }}></div>
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-300">0 / 10000 XP</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest opacity-70" style={{ color: currentRank.color }}>{xp} / {nextRank ? nextRank.minXp : "MAX"} XP</p>
         </div>
       </div>
 

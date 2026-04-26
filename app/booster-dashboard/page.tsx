@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import {
   Bell,
   BellOff,
@@ -24,7 +25,8 @@ import {
 } from "lucide-react";
 import { BoosterSidebar } from "@/components/booster/shell-navigation";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
-import { useBoosterAvatar } from "@/lib/use-booster-avatar";
+import { useNotifications } from "@/hooks/use-notifications";
+import { useSession } from "next-auth/react";
 
 type IncomingRequest = {
   id: string;
@@ -104,25 +106,31 @@ export default function BoosterDashboardPage() {
   const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isSidebarOnline, setIsSidebarOnline] = useState(true);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [dashboardData, setDashboardData] = useState<DashboardData>(emptyDashboardData);
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [savedPrimaryGame, setSavedPrimaryGame] = useState("");
+  const savedMainGameStorageKey = "booster-main-game";
 
-  const { avatarUrl } = useBoosterAvatar("/booster-pfps/default-avatar.svg");
-  const notifications: NotificationItem[] = [
-    { id: "queue", title: "2 new requests entered queue", meta: "Queue • Just now" },
-    { id: "payment", title: "Payment cleared for Order #88204", meta: "Finance • 2h ago" },
-  ];
+  const { 
+    notifications: realNotifications, 
+    unreadCount: realUnreadCount, 
+    markAllAsRead 
+  } = useNotifications();
+
+  const { data: session } = useSession();
+  const avatarUrl = session?.user?.image ?? "/booster-pfps/default-avatar.svg";
 
   const handleNotificationToggle = () => {
     setIsNotificationsOn((current) => !current);
   };
 
-  const handleMarkNotificationsRead = () => {
-    setUnreadNotificationCount(0);
-  };
+
 
   useEffect(() => {
+    const saved = window.localStorage.getItem(savedMainGameStorageKey) ?? "";
+    setSavedPrimaryGame(saved);
+
     const controller = new AbortController();
 
     const loadDashboardData = async () => {
@@ -145,16 +153,28 @@ export default function BoosterDashboardPage() {
         } as DashboardData;
 
         setDashboardData(merged);
-        setUnreadNotificationCount(merged.unreadNotifications);
       } catch {
         // Keep dashboard initialized to zero until backend becomes available.
         setDashboardData(emptyDashboardData);
-        setUnreadNotificationCount(0);
       } finally {
         setIsDashboardLoading(false);
       }
     };
 
+    const loadUserProfile = async () => {
+      try {
+        const response = await fetch("/api/auth/me");
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Dashboard User Profile:", data.user);
+          setUserProfile(data.user);
+        }
+      } catch (err) {
+        console.error("Failed to load user profile:", err);
+      }
+    };
+
+    loadUserProfile();
     loadDashboardData();
     return () => controller.abort();
   }, []);
@@ -228,7 +248,7 @@ export default function BoosterDashboardPage() {
       <BoosterTopBar
         avatarUrl={avatarUrl}
         isNotificationsOn={isNotificationsOn}
-        unreadNotificationCount={unreadNotificationCount}
+        unreadNotificationCount={realUnreadCount}
         isNotificationsPanelOpen={isNotificationsPanelOpen}
         onToggleNotificationsPanel={() => {
           setIsProfileMenuOpen(false);
@@ -236,8 +256,8 @@ export default function BoosterDashboardPage() {
         }}
         onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
         onToggleNotifications={handleNotificationToggle}
-        onMarkNotificationsRead={handleMarkNotificationsRead}
-        notifications={notifications}
+        onMarkNotificationsRead={markAllAsRead}
+        notifications={realNotifications}
         isProfileMenuOpen={isProfileMenuOpen}
         onToggleProfileMenu={() => {
           setIsNotificationsPanelOpen(false);
@@ -251,7 +271,7 @@ export default function BoosterDashboardPage() {
           }
 
           if (action === "Logout") {
-            router.push("/");
+            await signOut({ callbackUrl: "/" });
             return;
           }
 
@@ -263,6 +283,9 @@ export default function BoosterDashboardPage() {
         active="dashboard"
         isOnline={isSidebarOnline}
         onToggleOnline={() => setIsSidebarOnline((current) => !current)}
+        mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
+        rankInfo={userProfile?.boosterProfile?.rankInfo}
+        xp={userProfile?.boosterProfile?.xp}
       />
 
       <main className="h-screen overflow-y-auto pb-24 pl-8 pr-8 pt-24 md:ml-64">

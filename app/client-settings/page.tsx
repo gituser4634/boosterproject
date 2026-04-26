@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { Copy, UserCircle, Edit3 } from "lucide-react";
+import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
+import { BoosterProfileMenu } from "@/components/shared/booster-profile-menu";
 import { PickerSheet } from "@/components/booster/picker-sheet";
 import { supportedCountries } from "@/app/booster-profile/data";
 import { Button } from "@/components/ui/button";
@@ -10,8 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { FileInput } from "@/components/ui/file-input";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase";
 
 export default function ClientSettingsPage() {
+  const { data: session, update } = useSession();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // User identity state
@@ -24,6 +30,7 @@ export default function ClientSettingsPage() {
   const [isCountryPickerOpen, setIsCountryPickerOpen] = useState(false);
   const [countryToSet, setCountryToSet] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("/booster-pfps/default-avatar.svg");
+  const [draftAvatarUrl, setDraftAvatarUrl] = useState(""); // staged but not yet saved
   const [statusMessage, setStatusMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -38,6 +45,12 @@ export default function ClientSettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // Dialog State
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
+  const [tempValue, setTempValue] = useState("");
+  const [isCheckingTempUsername, setIsCheckingTempUsername] = useState(false);
+  const [isTempUsernameUnique, setIsTempUsernameUnique] = useState<boolean | null>(true);
+
   const showStatus = (text: string, ok = true) => {
     setStatusMessage({ text, ok });
     setTimeout(() => setStatusMessage(null), 4000);
@@ -45,31 +58,26 @@ export default function ClientSettingsPage() {
 
   // Load current user from session
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (!res.ok) {
-          showStatus("Not logged in. Please sign in first.", false);
-          setIsLoading(false);
-          return;
-        }
-        const data = await res.json();
-        const u = data.user;
-        setUserId(u.id ?? "");
-        setUsername(u.username ?? "");
-        setOriginalUsername(u.username ?? "");
-        setAlias(u.displayName ?? "");
-        setEmail(u.email ?? "");
-        setCountry(u.boosterProfile?.country ?? "");
-        if (u.profilePictureUrl) setAvatarUrl(u.profilePictureUrl);
-      } catch {
-        showStatus("Failed to load profile.", false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadUser();
-  }, []);
+    if (!session?.user) return;
+
+    // Populate directly from the session (always available, no auth() cookie issues)
+    setUserId(session.user.id ?? "");
+    setUsername((session.user as any).username ?? "");
+    setOriginalUsername((session.user as any).username ?? "");
+    setAlias(session.user.name ?? "");
+    // Email is available directly on the session user object
+    if ((session.user as any).email) setEmail((session.user as any).email);
+    if (session.user.image) setAvatarUrl(session.user.image);
+
+    // Enrich with full profile data (email fallback + any extra fields)
+    fetch("/api/auth/me")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.user?.email) setEmail(data.user.email);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [session]);
 
   // Username uniqueness check
   useEffect(() => {
@@ -96,44 +104,137 @@ export default function ClientSettingsPage() {
   }, [username, originalUsername]);
 
   const hasUnsavedProfileChanges = useMemo(() => {
-    return Boolean(username !== originalUsername || country || alias);
-  }, [username, originalUsername, country, alias]);
+    return Boolean(username !== originalUsername || alias);
+  }, [username, originalUsername, alias]);
 
-  const handleOpenCountryPicker = () => {
-    setCountryToSet(country);
-    setIsCountryPickerOpen(true);
+  const openEdit = (field: string, currentVal: string) => {
+    setTempValue(currentVal);
+    setOpenDialog(field);
+    if (field === 'username') {
+      setIsTempUsernameUnique(true);
+      setIsCheckingTempUsername(false);
+    }
   };
 
-  const handleSetCountryFromPicker = () => {
-    setCountry(countryToSet);
-    setIsCountryPickerOpen(false);
-    showStatus(`Country of origin set to ${countryToSet}.`);
+  useEffect(() => {
+    if (openDialog !== 'username') return;
+    if (!tempValue || tempValue === originalUsername) {
+      setIsTempUsernameUnique(true);
+      return;
+    }
+    const check = async () => {
+      setIsCheckingTempUsername(true);
+      try {
+        const res = await fetch(`/api/users/check-username?username=${encodeURIComponent(tempValue)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setIsTempUsernameUnique(data.isUnique);
+        }
+      } catch {
+        setIsTempUsernameUnique(null);
+      } finally {
+        setIsCheckingTempUsername(false);
+      }
+    };
+    const timer = setTimeout(check, 500);
+    return () => clearTimeout(timer);
+  }, [tempValue, originalUsername, openDialog]);
+
+  const saveField = async () => {
+    if (openDialog === 'username' && !isTempUsernameUnique) return;
+    
+    const overrides: any = {};
+    if (openDialog === "username") {
+      setUsername(tempValue);
+      overrides.username = tempValue;
+    } else if (openDialog === "alias") {
+      setAlias(tempValue);
+      overrides.alias = tempValue;
+    } else if (openDialog === "email") {
+      setEmail(tempValue);
+      overrides.email = tempValue;
+    }
+    
+    setOpenDialog(null);
+    setTimeout(() => handleSaveProfile(overrides), 0);
   };
 
   const handleAvatarUploadClick = () => fileInputRef.current?.click();
 
-  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) return;
+
     if (!selectedFile.type.startsWith("image/")) {
       showStatus("Please choose a valid image file.", false);
       event.target.value = "";
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const nextValue = typeof reader.result === "string" ? reader.result : "";
-      if (!nextValue) { showStatus("Failed to read image file.", false); return; }
-      setAvatarUrl(nextValue);
-      showStatus("Avatar updated in preview.");
-    };
-    reader.onerror = () => showStatus("Failed to read image file.", false);
-    reader.readAsDataURL(selectedFile);
-    event.target.value = "";
+
+    const maxFileSize = 2 * 1024 * 1024; // 2MB
+    if (selectedFile.size > maxFileSize) {
+      showStatus("Image must be 2MB or smaller.", false);
+      event.target.value = "";
+      return;
+    }
+
+    showStatus("Uploading image...");
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
+
+      setDraftAvatarUrl(data.publicUrl);
+      showStatus("Avatar staged. Click Apply to save.");
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      showStatus(`Upload failed: ${error.message || 'Unknown error'}`, false);
+    } finally {
+      event.target.value = "";
+    }
   };
 
-  const handleSaveProfile = async () => {
-    if (username && !isUsernameUnique) {
+  const handleApplyAvatar = async () => {
+    if (!draftAvatarUrl) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profilePictureUrl: draftAvatarUrl }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        showStatus(d.error ?? "Failed to apply avatar.", false);
+        return;
+      }
+      setAvatarUrl(draftAvatarUrl);
+      setDraftAvatarUrl("");
+      await update({ ...session, user: { ...session?.user, image: draftAvatarUrl } });
+      showStatus("Avatar applied and saved!");
+    } catch {
+      showStatus("Network error. Try again.", false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveProfile = async (overrides: any = {}) => {
+    const finalUsername = overrides.username !== undefined ? overrides.username : username;
+    const finalAlias = overrides.alias !== undefined ? overrides.alias : alias;
+    const finalEmail = overrides.email !== undefined ? overrides.email : email;
+
+    if (finalUsername && finalUsername !== originalUsername && !isTempUsernameUnique) {
       showStatus("Choose an available username first.", false);
       return;
     }
@@ -142,11 +243,24 @@ export default function ClientSettingsPage() {
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, displayName: alias, email }),
+        body: JSON.stringify({ 
+          username: finalUsername, 
+          displayName: finalAlias, 
+          email: finalEmail,
+          profilePictureUrl: avatarUrl
+        }),
       });
       const data = await res.json();
       if (!res.ok) { showStatus(data.error ?? "Save failed.", false); return; }
-      setOriginalUsername(username);
+      setOriginalUsername(finalUsername);
+      // Update session to reflect new image immediately in header
+      await update({
+        ...session,
+        user: {
+          ...session?.user,
+          image: avatarUrl
+        }
+      });
       showStatus("Profile saved successfully.");
     } catch {
       showStatus("Network error. Try again.", false);
@@ -209,9 +323,21 @@ export default function ClientSettingsPage() {
             <Link href="/client-settings" className="top-panel-link top-panel-link-active px-4 py-2 text-sm font-bold uppercase tracking-wide">Settings</Link>
             <Link href="/client-orders" className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide">Orders</Link>
           </div>
-          <Button asChild type="button" variant="ghost" size="sm" className="top-panel-link px-2 py-2">
-            <Link href="/level-up">Login</Link>
-          </Button>
+          {session?.user?.role === "CLIENT" ? (
+            <ClientProfileMenu 
+              avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
+              alt={session?.user?.name ?? "Client profile"} 
+            />
+          ) : session?.user?.role === "BOOSTER" ? (
+            <BoosterProfileMenu 
+              avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
+              alt={session?.user?.name ?? "Booster profile"} 
+            />
+          ) : (
+            <Button asChild type="button" variant="ghost" size="sm" className="top-panel-link px-2 py-2">
+              <Link href="/level-up">Login</Link>
+            </Button>
+          )}
         </div>
       </header>
 
@@ -230,7 +356,7 @@ export default function ClientSettingsPage() {
           <section className="ghost-border mb-6 flex flex-col items-center gap-8 rounded-xl bg-surface-container-low p-8 md:flex-row">
             <div className="group relative">
               <div className="h-32 w-32 overflow-hidden rounded-2xl border-2 border-primary/30 shadow-[0_0_30px_rgba(143,245,255,0.1)]">
-                <img src={avatarUrl} alt="Client avatar preview" className="h-full w-full object-cover" />
+                <img src={draftAvatarUrl || avatarUrl} alt="Client avatar preview" className="h-full w-full object-cover" />
               </div>
               <div className="absolute -bottom-2 -right-2 rounded-lg border border-primary/20 bg-background p-1.5 shadow-xl">
                 <Edit3 className="h-4 w-4 text-primary" />
@@ -238,11 +364,22 @@ export default function ClientSettingsPage() {
             </div>
             <div className="grow">
               <h2 className="font-headline mb-2 text-2xl font-bold text-on-surface">AVATAR</h2>
-              <p className="mb-6 max-w-md text-sm text-on-surface-variant">Update your profile image. Recommended resolution: 512x512px. JPG or PNG format only.</p>
+              <p className="mb-4 max-w-md text-sm text-on-surface-variant">Update your profile image. Recommended resolution: 512x512px. JPG or PNG format only.</p>
+              {draftAvatarUrl ? (
+                <p className="mb-4 text-[11px] font-bold uppercase tracking-wider text-amber-400">⚠ Preview only — click Apply to save.</p>
+              ) : null}
               <div className="flex flex-wrap gap-4">
                 <Button type="button" onClick={handleAvatarUploadClick} className="primary-gradient font-label rounded-md px-6 py-2.5 text-xs font-extrabold uppercase tracking-wider text-on-primary-fixed transition-transform active:scale-95">UPLOAD Avatar</Button>
                 <FileInput ref={fileInputRef} accept="image/png,image/jpeg,image/webp" onChange={handleAvatarFileChange} className="hidden" />
-                <Button type="button" onClick={() => setAvatarUrl("/booster-pfps/default-avatar.svg")} className="font-label rounded-md border border-white/10 bg-white/5 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-on-surface-variant transition-all hover:bg-white/10">Remove</Button>
+                <Button type="button" onClick={() => { setDraftAvatarUrl(""); setAvatarUrl("/booster-pfps/default-avatar.svg"); }} className="font-label rounded-md border border-white/10 bg-white/5 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-on-surface-variant transition-all hover:bg-white/10">Remove</Button>
+                <Button
+                  type="button"
+                  onClick={handleApplyAvatar}
+                  disabled={!draftAvatarUrl || isSaving}
+                  className="font-label rounded-md border border-primary/30 bg-primary/10 px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-primary transition-all hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {isSaving ? "Saving..." : "Apply"}
+                </Button>
               </div>
             </div>
           </section>
@@ -270,68 +407,51 @@ export default function ClientSettingsPage() {
               ) : null}
             </div>
 
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">Username</Label>
-                  {isCheckingUsername ? (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Checking...</span>
-                  ) : username && username !== originalUsername ? (
-                    isUsernameUnique
-                      ? <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Available</span>
-                      : <span className="text-[10px] font-bold uppercase tracking-wider text-error">Taken</span>
-                  ) : null}
-                </div>
-                <Input
-                  className={`ghost-border w-full rounded-sm border ${username && !isUsernameUnique && !isCheckingUsername ? "border-error focus:ring-error" : "border-none focus:ring-primary"} bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1`}
-                  placeholder="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                 <div>
+                   <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Username</Label>
+                   <p className="text-sm font-bold text-on-surface">@{username}</p>
+                 </div>
+                 <Button 
+                   variant="ghost" 
+                   size="sm" 
+                   className="text-primary hover:bg-primary/10"
+                   onClick={() => openEdit("username", username)}
+                 >
+                   <Edit3 className="h-4 w-4 mr-2" /> Edit
+                 </Button>
               </div>
 
-              <div className="space-y-2">
-                <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">Alias / Display Name</Label>
-                <Input
-                  className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
-                  placeholder="Your display name"
-                  type="text"
-                  value={alias}
-                  onChange={(e) => setAlias(e.target.value)}
-                />
+              <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                 <div>
+                   <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Alias / Display Name</Label>
+                   <p className="text-sm font-bold text-on-surface">{alias}</p>
+                 </div>
+                 <Button 
+                   variant="ghost" 
+                   size="sm" 
+                   className="text-primary hover:bg-primary/10"
+                   onClick={() => openEdit("alias", alias)}
+                 >
+                   <Edit3 className="h-4 w-4 mr-2" /> Edit
+                 </Button>
               </div>
 
-              <div className="space-y-2">
-                <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">Email Address</Label>
-                <Input
-                  className="ghost-border w-full rounded-sm border-none bg-surface-container-lowest px-4 py-3 text-on-surface transition-all focus:ring-1 focus:ring-primary"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+              <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                 <div>
+                   <Label className="font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Email Address</Label>
+                   <p className="text-sm font-bold text-on-surface">{email}</p>
+                 </div>
+                 <Button 
+                   variant="ghost" 
+                   size="sm" 
+                   className="text-primary hover:bg-primary/10"
+                   onClick={() => openEdit("email", email)}
+                 >
+                   <Edit3 className="h-4 w-4 mr-2" /> Edit
+                 </Button>
               </div>
-
-              <div className="space-y-2">
-                <Label className="font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">Place Of Origin</Label>
-                <div className="ghost-border flex items-center gap-2 rounded-sm bg-surface-container-lowest px-3 py-2">
-                  <Input className="w-full border-none bg-transparent p-0 text-sm text-on-surface focus:ring-0" type="text" value={country} readOnly />
-                  <Button type="button" onClick={handleOpenCountryPicker} className="rounded border border-cyan-400/40 bg-cyan-400/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition-colors hover:bg-cyan-400/25">
-                    Pick
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8">
-              <Button
-                type="button"
-                onClick={handleSaveProfile}
-                disabled={isSaving}
-                className="primary-gradient font-label rounded-md px-8 py-3 text-sm font-extrabold uppercase tracking-wider text-on-primary-fixed shadow-[0_0_20px_rgba(143,245,255,0.2)] transition-transform active:scale-95 disabled:opacity-40"
-              >
-                {isSaving ? "Saving..." : "Save Profile"}
-              </Button>
             </div>
           </section>
 
@@ -366,22 +486,61 @@ export default function ClientSettingsPage() {
         </div>
       </main>
 
-      <PickerSheet open={isCountryPickerOpen} onOpenChange={setIsCountryPickerOpen} title="Country of Origin" zIndexClassName="z-[67]">
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          <div className="grid grid-cols-1 gap-2">
-            {supportedCountries.map((c) => (
-              <Button key={c} type="button" onClick={() => setCountryToSet(c)}
-                className={`rounded-md border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all ${countryToSet === c ? "border-primary/40 bg-primary/10 text-primary" : "border-white/10 bg-surface-container-low text-on-surface-variant hover:text-on-surface"}`}>
-                {c}
-              </Button>
-            ))}
+      <Dialog open={!!openDialog} onOpenChange={() => setOpenDialog(null)}>
+        <DialogContent className="sm:max-w-[425px] border-white/10 bg-[#0c0e14] text-white shadow-[0_0_50px_rgba(34,211,238,0.15)]">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-xl font-bold uppercase tracking-widest text-primary">Edit {openDialog?.replace(/([A-Z])/g, ' $1')}</DialogTitle>
+            <DialogDescription className="text-on-surface-variant">
+              {openDialog === 'username' || openDialog === 'alias' ? 'Max 25 characters.' : 'Update your profile information below.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-6">
+            {openDialog === 'email' ? (
+               <Input 
+                type="email"
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+                className="ghost-border h-12 w-full rounded-lg border-none bg-surface-container-highest px-4 text-on-surface focus:ring-1 focus:ring-primary"
+              />
+            ) : (
+              <div className="space-y-2">
+                <Input 
+                  value={tempValue}
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (openDialog === 'username' || openDialog === 'alias') val = val.slice(0, 25);
+                    setTempValue(val);
+                  }}
+                  className="ghost-border h-12 w-full rounded-lg border-none bg-surface-container-highest px-4 text-on-surface focus:ring-1 focus:ring-primary"
+                />
+                {openDialog === 'username' && (
+                   <div className="flex justify-end pt-1">
+                      {isCheckingTempUsername ? (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Checking...</span>
+                      ) : tempValue && tempValue !== originalUsername ? (
+                        isTempUsernameUnique ? (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Available</span>
+                        ) : (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-error">Taken</span>
+                        )
+                      ) : null}
+                   </div>
+                )}
+              </div>
+            )}
           </div>
-        </div>
-        <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
-          <Button type="button" onClick={() => setIsCountryPickerOpen(false)} className="w-full rounded-md border border-white/10 bg-surface-container-low px-4 py-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-white/10">Cancel</Button>
-          <Button type="button" onClick={handleSetCountryFromPicker} className="primary-gradient w-full rounded-md px-4 py-3 text-xs font-black uppercase tracking-widest text-on-primary-fixed">Set Country</Button>
-        </div>
-      </PickerSheet>
+          <div className="flex justify-end gap-3">
+             <Button variant="ghost" onClick={() => setOpenDialog(null)} className="font-bold uppercase tracking-wider">Cancel</Button>
+             <Button 
+               onClick={saveField}
+               disabled={isSaving || (openDialog === 'username' && !isTempUsernameUnique)}
+               className="cta-flame-soft cta-flame-soft-primary px-8 font-bold uppercase tracking-widest"
+             >
+               {isSaving ? "Saving..." : "Save"}
+             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

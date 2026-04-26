@@ -79,6 +79,7 @@ model BoosterProfile {
   successRate   Int               @default(100)
   hours         Int               @default(0)
   bio           String            @default("")
+  xp            Int               @default(0)
   hourlyRate    Decimal           @default(0) @db.Decimal(10, 2)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt

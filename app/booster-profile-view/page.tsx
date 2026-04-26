@@ -44,7 +44,7 @@ export default async function BoosterProfileViewPage() {
         rating: Number(boosterProfile.averageRating),
         hoursPlayed: boosterProfile.hours.toString(),
         successRate: `${boosterProfile.successRate}%`,
-        totalOrders: completedOrders,
+        totalOrders: boosterProfile.totalReviews,
         mainGame: boosterProfile.mainGame.name,
         mainRank: mainBoosterGame?.rank.name || "Unranked",
         origin: boosterProfile.country,
