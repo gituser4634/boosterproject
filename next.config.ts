@@ -4,14 +4,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // React settings
   reactStrictMode: true,
-  
-  // Optimizations for serverless environments
-  swcMinify: true,
-  
-  // Environment variables
-  env: {
-    // These will be embedded at build time if needed
-  },
 
   // Headers for security and performance
   async headers() {
@@ -50,10 +42,8 @@ const nextConfig: NextConfig = {
     return [];
   },
 
-  // Webpack configuration
-  webpack: (config, { isServer }) => {
-    return config;
-  },
+  // Turbopack configuration for Next.js 16
+  turbopack: {},
 };
 
 export default nextConfig;
