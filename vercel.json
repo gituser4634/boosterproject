@@ -1,9 +1,9 @@
 {
-  buildCommand: "next build",
-  outputDirectory: ".next",
-  framework: "nextjs",
-  regions: ["iad1"],
-  env: [
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "env": [
     "DATABASE_URL",
     "DIRECT_URL",
     "NEXTAUTH_SECRET",
