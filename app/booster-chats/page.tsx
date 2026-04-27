@@ -4,261 +4,318 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useRealtimeChat } from "@/hooks/use-realtime-chat";
 import {
   ArrowLeft,
   Info,
   MessageSquare,
   Mic,
+  MicOff,
   PlusCircle,
   Search,
   Send,
   Smile,
+  Image as ImageIcon,
+  X,
 } from "lucide-react";
 import { BoosterMobileNav, BoosterSidebar } from "@/components/booster/shell-navigation";
 import { BoosterTopBar } from "@/components/booster/top-bar";
 import { Button } from "@/components/ui/button";
-import { FileInput } from "@/components/ui/file-input";
 import { Input } from "@/components/ui/input";
 import { useSession } from "next-auth/react";
+import { LayoutDashboard, ClipboardList, Wallet, Settings } from "lucide-react";
+import { uploadChatMedia } from "@/lib/supabase-storage";
 
 type TabType = "chats" | "requests";
-type MessageType = "text" | "image" | "voice";
 
-type ChatMessage = {
+// Unified sidebar thread
+type Thread = {
   id: string;
-  sender: "client" | "booster";
-  type: MessageType;
-  content: string;
-  time: string;
-};
-
-type ChatThread = {
-  id: string;
-  customer: string;
-  subtitle: string;
-  gameTag: string;
-  requestType?: "Play Together" | "Boost" | "Coaching";
-  hasActiveOrder: boolean;
-  clientStatus: "current" | "previous" | "none";
-  statusText: string;
-  avatar: string;
-  isOnline: boolean;
+  type: "order" | "request";
+  displayName: string;
+  avatarUrl: string | null;
+  lastMessage: string;
+  gameTag?: string;
   hasUnread: boolean;
-  lastSeen: string;
-  messages: ChatMessage[];
+  clientStatus: "current" | "previous" | "none";
 };
 
-const initialThreads: ChatThread[] = [
-  {
-    id: "card-1",
-    customer: 'Alex "Cypher" Thompson',
-    subtitle: "Radiant Push",
-    gameTag: "VALORANT",
-    requestType: "Boost",
-    hasActiveOrder: true,
-    clientStatus: "current",
-    avatar:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBfi3gwWinFD28XVeXn8mnfmn0ooenQr6igWba6JcQT7bYVOwIj-GQxYSuXrSTukfzdV7hqr66cSBLkJt83G1dClnnFOdbfV7bq95h-xlsgcKpNVZUzRtiVtF26oGqiHP1quYcLJTNq5RHahUxZuGbY7hQlSdsvePZl02lenUKNl9TY0VgPCyLqTgYJAii2pxx2BJ475DUY3niOXjCLVfHw_c57QxZQlBC7uU0NXaAVSbDtK1uWH-h6OMOroxOuFXeWW9H2fHl-_No",
-    isOnline: true,
-    hasUnread: true,
-    statusText: "Can we start the next session in 10 mins?",
-    lastSeen: "2m ago",
-    messages: [
-      {
-        id: "m-1",
-        sender: "client",
-        type: "text",
-        content: "Hey man, thanks for the session yesterday. I'm already seeing progress in my rank.",
-        time: "09:12 AM",
-      },
-      {
-        id: "m-2",
-        sender: "booster",
-        type: "text",
-        content:
-          "Happy to help! You're playing really solid. Just need to focus more on your positioning during post-plants.",
-        time: "09:15 AM",
-      },
-      {
-        id: "m-3",
-        sender: "client",
-        type: "text",
-        content: "Makes sense. Can we start the next session in 10 mins?",
-        time: "Just now",
-      },
-    ],
-  },
-  {
-    id: "card-3",
-    customer: 'Sarah "Wraith" Miller',
-    subtitle: "Duo Queue",
-    gameTag: "APEX",
-    requestType: "Play Together",
-    hasActiveOrder: true,
-    clientStatus: "previous",
-    avatar:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAnu8zZhvRRswFF8j75Wuyn1gyuowcYrNXNyi3sHCjxjaI4krSpL4BH3UUEmKZuZv7U0gBQV-hgs2UrLrbJEv7iPuU2wVmlzzok_fJ0bj82hLQYR8jx9VJdefz0rSAnANXu3186-wglxlfzS9kJwJXiYLauNrH8eWkGgKXhhNCPr1UPoZ_TMCYSBrtskDfCMA7O2pKFU837csuYv6wzTsr8g8pjvz_cV4tvmHZfeDrJd1HFMDGCs_wYQyNfFCCziWTddeKNoVkTG4A",
-    isOnline: false,
-    hasUnread: false,
-    statusText: "Thanks for the carry! That last win was insane.",
-    lastSeen: "1h ago",
-    messages: [
-      {
-        id: "m-4",
-        sender: "client",
-        type: "text",
-        content: "Thanks for the carry! That last win was insane.",
-        time: "08:04 AM",
-      },
-    ],
-  },
-  {
-    id: "card-4",
-    customer: "Jason K.",
-    subtitle: "Rank Check",
-    gameTag: "VALORANT",
-    hasActiveOrder: false,
-    clientStatus: "none",
-    avatar:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuCcDEUKtsIsz9mjRhtnA2zrwJmXqoGOh3Zm9_Img80k2l0-DSiP60j6Iu152V1muGtQ-UqQbXFpeXdipcxNeSEjb_7bU-KKiMytCXFs_61YMoND7ESmLDUmIvZZR1cQ0yFkdtmytTf7E8J6innTOzlYdlLYPGbzqk8drUs-nfNJZCCngzJHIu0Fw7K7Jv3NJI995ZhWLocjLbVNUkVR1KMfpREirk5F7Og1cKxD-CR5wXN2OLx5HRiQSvtVFsGc6TQt6z4wWhTdMSk",
-    isOnline: false,
-    hasUnread: false,
-    statusText: "Is the boost still active for my account?",
-    lastSeen: "4h ago",
-    messages: [
-      {
-        id: "m-5",
-        sender: "client",
-        type: "text",
-        content: "Is the boost still active for my account?",
-        time: "04:42 AM",
-      },
-    ],
-  },
-];
+// ─── helpers ──────────────────────────────────────────────────────────────────
+function looksLikeAudio(content: string): boolean {
+  return /\.(webm|mp3|ogg|wav|m4a)(\?|$)/i.test(content) || content.includes("/audio/");
+}
+function looksLikeImage(content: string): boolean {
+  return /\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(content) || content.includes("/images/");
+}
 
-const initialRequestThreads: ChatThread[] = [
-  {
-    id: "card-2",
-    customer: "ShadowReaper",
-    subtitle: "Coaching Request",
-    gameTag: "CS2",
-    requestType: "Coaching",
-    hasActiveOrder: false,
+function formatLastMessage(msg: any): string {
+  if (!msg) return "No messages yet";
+  if (msg.messageType === "IMAGE" || looksLikeImage(msg.content)) return "[Image]";
+  if (msg.messageType === "AUDIO" || looksLikeAudio(msg.content)) return "[Voice Note]";
+  return msg.content;
+}
+
+function toOrderThread(raw: any): Thread {
+  const last = raw.messages?.[0];
+  return {
+    id: raw.id,
+    type: "order",
+    displayName: raw.customer?.displayName || raw.customer?.username || "Client",
+    avatarUrl: raw.customer?.profilePictureUrl ?? null,
+    lastMessage: formatLastMessage(last),
+    gameTag: raw.game?.name?.toUpperCase(),
+    hasUnread: false,
+    clientStatus: raw.status === "COMPLETED" ? "previous" : "current",
+  };
+}
+
+function toRequestThread(raw: any): Thread {
+  const peer = raw.sender || raw.receiver;
+  const last = raw.messages?.[0];
+  return {
+    id: raw.id,
+    type: "request",
+    displayName: peer?.displayName || peer?.username || "Client",
+    avatarUrl: peer?.profilePictureUrl ?? null,
+    lastMessage: formatLastMessage(last),
+    hasUnread: false,
     clientStatus: "none",
-    avatar:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBGfvlQ0S9lW3oDV8rWDSZeCf5oKnU8BuViauBXEnFTBV4oyicHXMM41MWYo6Yqa6BE-12udJjOrmut1zuL2lmbmJaB9XqDS5FEvRYINY_YWuRr8bIldB1KH1mIGs2ivUm1O1pnM2MuuZIG2aCXPt3uo1O2UzZ0rTIjqQYcHPNTNCgbuGIxzuLg7xCXGgFZ5Y1x8cXmrlf2UPjIvZdbWjoMzHRjTJU7mxt--LP-BvlLcG6IZQul9ivJcoinBavR1MAeJurfBP5o7FU",
-    isOnline: true,
-    hasUnread: true,
-    statusText: "Yo, I sent a request. Are you available this evening?",
-    lastSeen: "now",
-    messages: [
-      {
-        id: "m-6",
-        sender: "client",
-        type: "text",
-        content: "Yo, I sent a request. Are you available this evening?",
-        time: "Now",
-      },
-    ],
-  },
-];
+  };
+}
 
 const emojiPool = ["🔥", "✅", "💯", "🎯", "🚀", "😎", "🫡", "👍"];
 
+// ─── Active thread key ─────────────────────────────────────────────────────────
+type ActiveKey = { id: string; type: "order" | "request" } | null;
+
+// ─── Inner component ───────────────────────────────────────────────────────────
 function BoosterChatsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedThread = searchParams.get("thread");
-
-  const [tab, setTab] = useState<TabType>("chats");
-  const [threads, setThreads] = useState<ChatThread[]>(initialThreads);
-  const [requestThreads, setRequestThreads] = useState<ChatThread[]>(initialRequestThreads);
-  const [activeThreadId, setActiveThreadId] = useState(initialThreads[0]?.id ?? "");
-  const [search, setSearch] = useState("");
-  const [draft, setDraft] = useState("");
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [savedPrimaryGame, setSavedPrimaryGame] = useState("");
-  const savedMainGameStorageKey = "booster-main-game";
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem(savedMainGameStorageKey) ?? "";
-    setSavedPrimaryGame(saved);
-
-    const loadUserProfile = async () => {
-      try {
-        const response = await fetch("/api/auth/me");
-        if (response.ok) {
-          const data = await response.json();
-          setUserProfile(data.user);
-        }
-      } catch (err) {
-        console.error("Failed to load user profile:", err);
-      }
-    };
-    loadUserProfile();
-  }, []);
-  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
-  const [isClientTyping, setIsClientTyping] = useState(false);
-  const [isSidebarOnline, setIsSidebarOnline] = useState(true);
-  const [isNotificationsOn, setIsNotificationsOn] = useState(true);
-  const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
-  const { 
-    notifications: realNotifications, 
-    unreadCount: realUnreadCount, 
-    markAllAsRead 
-  } = useNotifications();
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [voiceCounter, setVoiceCounter] = useState(1);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { data: session } = useSession();
+  const userId = session?.user?.id ?? "";
   const avatarUrl = session?.user?.image ?? "/booster-pfps/default-avatar.svg";
 
-  const activeList = tab === "chats" ? threads : requestThreads;
+  const [tab, setTab] = useState<TabType>("chats");
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<Thread[]>([]);
+  const [activeKey, setActiveKey] = useState<ActiveKey>(null);
+  const [search, setSearch] = useState("");
+  const [draft, setDraft] = useState("");
+  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
+  const [isNotificationsOn, setIsNotificationsOn] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [savedPrimaryGame, setSavedPrimaryGame] = useState("");
+  const [threadError, setThreadError] = useState<string | null>(null);
+  const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  const [hideSidebar, setHideSidebar] = useState(false);
+
+  const boosterNavItems = [
+    { key: "dashboard", label: "Dashboard", href: "/booster-dashboard", icon: <LayoutDashboard className="h-5 w-5" />, isActive: false },
+    { key: "requests", label: "Requests", href: "/booster-requests", icon: <ClipboardList className="h-5 w-5" />, isActive: false },
+    { key: "payments", label: "Payments", href: "/booster-payments", icon: <Wallet className="h-5 w-5" />, isActive: false },
+    { key: "chats", label: "Chats", href: "/booster-chats", icon: <MessageSquare className="h-5 w-5" />, isActive: true },
+    { key: "settings", label: "Settings", href: "/booster-profile", icon: <Settings className="h-5 w-5" />, isActive: false },
+  ];
+
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!requestedThread) return;
+    const saved = window.localStorage.getItem("zenith-hide-sidebar") === "true";
+    setHideSidebar(saved);
+  }, []);
 
-    const inChats = threads.some((thread) => thread.id === requestedThread);
-    const inRequests = requestThreads.some((thread) => thread.id === requestedThread);
+  const { notifications: realNotifications, unreadCount: realUnreadCount, markAllAsRead } = useNotifications();
 
-    if (inRequests) {
-      setTab("requests");
-      setActiveThreadId(requestedThread);
-      return;
+  const loadThreads = useCallback(async () => {
+    try {
+      const res = await fetch("/api/chats/threads");
+      if (!res.ok) return;
+      const data = await res.json();
+      const orderThreads: Thread[] = (data.orderThreads ?? []).map(toOrderThread);
+      const reqThreads: Thread[] = (data.requestThreads ?? []).map(toRequestThread);
+      const pending: Thread[] = (data.pendingRequests ?? []).map(toRequestThread);
+      setThreads([...orderThreads, ...reqThreads]);
+      setPendingRequests(pending);
+      if (!activeKey) {
+        const first = orderThreads[0] ?? reqThreads[0];
+        if (first) setActiveKey({ id: first.id, type: first.type });
+      }
+    } catch {
+      setThreadError("Failed to load conversations.");
     }
+  }, [activeKey]);
 
-    if (inChats) {
-      setTab("chats");
-      setActiveThreadId(requestedThread);
+  useEffect(() => {
+    const saved = window.localStorage.getItem("booster-main-game") ?? "";
+    setSavedPrimaryGame(saved);
+
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setUserProfile(d.user))
+      .catch(() => {});
+
+    loadThreads();
+  }, [loadThreads]);
+
+  useEffect(() => {
+    const requestedId = searchParams.get("thread");
+    if (!requestedId) return;
+    const inChats = threads.find((t) => t.id === requestedId);
+    const inReqs = pendingRequests.find((t) => t.id === requestedId);
+    if (inChats) { setTab("chats"); setActiveKey({ id: requestedId, type: inChats.type }); }
+    if (inReqs) { setTab("requests"); setActiveKey({ id: requestedId, type: inReqs.type }); }
+  }, [searchParams, threads, pendingRequests]);
+
+  const { messages: realtimeMessages, sendMessage, isLoading: messagesLoading } = useRealtimeChat({
+    orderId: activeKey?.type === "order" ? activeKey.id : undefined,
+    chatRequestId: activeKey?.type === "request" ? activeKey.id : undefined,
+    currentUserId: userId,
+  });
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      setTimeout(() => {
+        messagesContainerRef.current?.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      }, 0);
     }
-  }, [requestedThread, threads, requestThreads]);
+  }, [realtimeMessages]);
+
+  const activeList = tab === "chats" ? threads : pendingRequests;
 
   const filteredList = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return activeList;
-
+    const q = search.trim().toLowerCase();
+    if (!q) return activeList;
     return activeList.filter(
-      (thread) =>
-        thread.customer.toLowerCase().includes(query) ||
-        thread.subtitle.toLowerCase().includes(query) ||
-        thread.gameTag.toLowerCase().includes(query)
+      (t) =>
+        t.displayName.toLowerCase().includes(q) ||
+        (t.gameTag ?? "").toLowerCase().includes(q)
     );
   }, [search, activeList]);
 
-  const activeThread =
-    filteredList.find((thread) => thread.id === activeThreadId) ??
-    activeList.find((thread) => thread.id === activeThreadId) ??
-    activeList[0] ??
-    null;
+  const activeThread = useMemo(
+    () => activeList.find((t) => t.id === activeKey?.id) ?? filteredList[0] ?? null,
+    [activeList, activeKey, filteredList]
+  );
 
-  const handleNotificationToggle = () => {
-    setIsNotificationsOn((current) => !current);
+  const openThread = (thread: Thread) => {
+    setActiveKey({ id: thread.id, type: thread.type });
   };
 
-  const getClientTag = (status: ChatThread["clientStatus"]) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeKey) return;
+    setIsUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `images/${crypto.randomUUID()}.${ext}`;
+      const url = await uploadChatMedia(file, path, file.type);
+      await sendMessage(url, "IMAGE");
+    } catch (e: any) {
+      console.error("Image upload failed:", e.message);
+    } finally {
+      setIsUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        setIsUploading(true);
+        try {
+          const path = `audio/${crypto.randomUUID()}.webm`;
+          const url = await uploadChatMedia(blob, path, "audio/webm");
+          await sendMessage(url, "AUDIO");
+        } catch (e: any) {
+          console.error("Audio upload failed:", e.message);
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((s) => s + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Mic access denied:", err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    }
+  };
+
+  const acceptRequest = async () => {
+    if (!activeThread || tab !== "requests") return;
+    try {
+      const res = await fetch(`/api/chat-requests`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatRequestId: activeThread.id, action: "accept" }),
+      });
+      if (res.ok) {
+        await loadThreads();
+        setTab("chats");
+      } else {
+        const error = await res.json();
+        console.error("Failed to accept request:", error);
+      }
+    } catch (e) {
+      console.error("Failed to accept request:", e);
+    }
+  };
+
+  const declineRequest = async () => {
+    if (!activeThread || tab !== "requests") return;
+    try {
+      const res = await fetch(`/api/chat-requests`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatRequestId: activeThread.id, action: "decline" }),
+      });
+      if (res.ok) {
+        await loadThreads();
+      } else {
+        const error = await res.json();
+        console.error("Failed to decline request:", error);
+      }
+    } catch (e) {
+      console.error("Failed to decline request:", e);
+    }
+  };
+
+  const getClientTag = (status: Thread["clientStatus"]) => {
     if (status === "current") {
       return (
         <span className="rounded-full border border-emerald-500/40 bg-emerald-500/12 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-emerald-300">
@@ -266,7 +323,6 @@ function BoosterChatsPageContent() {
         </span>
       );
     }
-
     if (status === "previous") {
       return (
         <span className="rounded-full border border-violet-400/40 bg-violet-400/12 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-violet-200">
@@ -274,142 +330,29 @@ function BoosterChatsPageContent() {
         </span>
       );
     }
-
     return null;
-  };
-
-  useEffect(() => {
-    if (!activeThread || tab !== "chats" || !activeThread.isOnline) {
-      setIsClientTyping(false);
-      return;
-    }
-
-    const startTyping = window.setTimeout(() => setIsClientTyping(true), 2200);
-    const stopTyping = window.setTimeout(() => setIsClientTyping(false), 5200);
-
-    return () => {
-      window.clearTimeout(startTyping);
-      window.clearTimeout(stopTyping);
-    };
-  }, [activeThread?.id, activeThread?.messages.length, activeThread?.isOnline, tab]);
-
-  const bumpThreadToTop = (
-    list: ChatThread[],
-    threadId: string,
-    updater: (thread: ChatThread) => ChatThread
-  ) => {
-    const targetIndex = list.findIndex((thread) => thread.id === threadId);
-    if (targetIndex === -1) return list;
-
-    const updatedThread = updater(list[targetIndex]);
-    const remainingThreads = list.filter((thread) => thread.id !== threadId);
-    return [updatedThread, ...remainingThreads];
-  };
-
-  const appendMessage = (message: Omit<ChatMessage, "id" | "time">) => {
-    const now = new Date();
-    const time = now.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-    const updateThread = (thread: ChatThread) => ({
-      ...thread,
-      hasUnread: false,
-      statusText:
-        message.type === "text"
-          ? message.content
-          : message.type === "image"
-            ? "Sent an image"
-            : "Sent a voice note",
-      lastSeen: "now",
-      messages: [
-        ...thread.messages,
-        {
-          id: `msg-${Date.now()}`,
-          sender: message.sender,
-          type: message.type,
-          content: message.content,
-          time,
-        },
-      ],
-    });
-
-    if (tab === "chats") {
-      setThreads((current) => bumpThreadToTop(current, activeThread.id, updateThread));
-    } else {
-      setRequestThreads((current) => bumpThreadToTop(current, activeThread.id, updateThread));
-    }
-  };
-
-  const sendText = () => {
-    const value = draft.trim();
-    if (!value) return;
-    appendMessage({ sender: "booster", type: "text", content: value });
-    setDraft("");
-  };
-
-  const sendVoice = () => {
-    appendMessage({ sender: "booster", type: "voice", content: `Voice note #${voiceCounter} (0:12)` });
-    setVoiceCounter((current) => current + 1);
-  };
-
-  const sendImage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const imageUrl = URL.createObjectURL(file);
-    appendMessage({ sender: "booster", type: "image", content: imageUrl });
-    event.target.value = "";
-  };
-
-  const openThread = (threadId: string) => {
-    setActiveThreadId(threadId);
-    if (tab === "chats") {
-      setThreads((current) =>
-        current.map((thread) => (thread.id === threadId ? { ...thread, hasUnread: false } : thread))
-      );
-    } else {
-      setRequestThreads((current) =>
-        current.map((thread) => (thread.id === threadId ? { ...thread, hasUnread: false } : thread))
-      );
-    }
-  };
-
-  const acceptRequest = () => {
-    if (!activeThread || tab !== "requests") return;
-
-    setRequestThreads((current) => current.filter((thread) => thread.id !== activeThread.id));
-    setThreads((current) => [...current, { ...activeThread, hasUnread: false }]);
-    setTab("chats");
-    setActiveThreadId(activeThread.id);
-  };
-
-  const declineRequest = () => {
-    if (!activeThread || tab !== "requests") return;
-
-    setRequestThreads((current) => current.filter((thread) => thread.id !== activeThread.id));
-    setActiveThreadId(threads[0]?.id ?? "");
   };
 
   return (
     <>
-      <BoosterSidebar
-        active="chats"
-        isOnline={isSidebarOnline}
-        onToggleOnline={() => setIsSidebarOnline((current) => !current)}
-        mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
-        rankInfo={userProfile?.boosterProfile?.rankInfo}
-        xp={userProfile?.boosterProfile?.xp}
-      />
+      {!hideSidebar && (
+        <BoosterSidebar
+          active="chats"
+          isOnline={isNotificationsOn}
+          onToggleOnline={() => setIsNotificationsOn((c) => !c)}
+          mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
+          rankInfo={userProfile?.boosterProfile?.rankInfo}
+          xp={userProfile?.boosterProfile?.xp}
+        />
+      )}
 
       <BoosterTopBar
         brandLabel="ZENITH BOOSTER"
         brandClassName="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400"
-        headerClassName="fixed top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/5 bg-[#0b0e14]/65 px-8 pl-72 shadow-sm shadow-black/20 backdrop-blur-xl"
+        headerClassName={`fixed top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/5 bg-[#0b0e14]/65 px-8 ${hideSidebar ? "" : "pl-72"} shadow-sm shadow-black/20 backdrop-blur-xl`}
         rightClassName="flex items-center gap-6 pr-8"
         avatarUrl={avatarUrl}
+        navItems={hideSidebar ? boosterNavItems : undefined}
         avatarAlt="User Avatar"
         avatarBorderClassName="border-cyan-400/30"
         isNotificationsOn={isNotificationsOn}
@@ -420,7 +363,7 @@ function BoosterChatsPageContent() {
           setIsNotificationsPanelOpen((current) => !current);
         }}
         onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
-        onToggleNotifications={handleNotificationToggle}
+        onToggleNotifications={() => setIsNotificationsOn((c) => !c)}
         onMarkNotificationsRead={markAllAsRead}
         notifications={realNotifications}
         isProfileMenuOpen={isProfileMenuOpen}
@@ -430,61 +373,33 @@ function BoosterChatsPageContent() {
         }}
         onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
         onProfileAction={async (action) => {
-          if (action === "Settings") {
-            router.push("/booster-profile");
-            return;
-          }
-
-          if (action === "Logout") {
-            await signOut({ callbackUrl: "/" });
-            return;
-          }
-
+          if (action === "Settings") { router.push("/booster-profile"); return; }
+          if (action === "Logout") { await signOut({ callbackUrl: "/" }); return; }
           setIsProfileMenuOpen(false);
         }}
       />
 
-      <main className="ml-64 h-screen overflow-hidden pt-16">
+      <main className={`h-screen overflow-hidden pt-16 transition-all duration-300 ${hideSidebar ? "" : "ml-64"}`}>
         <div className="grid h-[calc(100vh-4rem)] grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(0,1.2fr)] overflow-hidden lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-1">
           <section className="flex min-h-0 flex-col border-b border-outline-variant/10 bg-surface-container-low/85 lg:border-b-0 lg:border-r">
             <div className="p-6 pb-2">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="headline text-2xl font-bold text-on-surface">Messages</h2>
               </div>
-
               <div className="mb-6 flex items-center gap-2">
-                {tab === "requests" ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setTab("chats");
-                      setActiveThreadId(threads[0]?.id ?? "");
-                    }}
-                    className="h-10 w-10 rounded-xl border border-white/10 bg-surface-container-highest/20 text-on-surface-variant hover:bg-surface-container-highest/40 hover:text-on-surface"
-                    aria-label="Back to general chats"
-                  >
+                {tab === "requests" && (
+                  <Button type="button" variant="ghost" size="icon" onClick={() => { setTab("chats"); }} className="h-10 w-10 rounded-xl border border-white/10 bg-surface-container-highest/20 text-on-surface-variant hover:bg-surface-container-highest/40 hover:text-on-surface">
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
-                ) : null}
-
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setTab("requests");
-                    setActiveThreadId(requestThreads[0]?.id ?? "");
-                  }}
-                  className="group h-auto w-full items-center justify-between rounded-xl border border-primary/20 bg-surface-container-highest/25 px-4 py-3 transition-all duration-200 hover:border-primary/40 hover:bg-surface-container-highest/45"
-                >
+                )}
+                <Button type="button" onClick={() => { setTab("requests"); }} className="group h-auto w-full items-center justify-between rounded-xl border border-primary/20 bg-surface-container-highest/25 px-4 py-3 transition-all duration-200 hover:border-primary/40 hover:bg-surface-container-highest/45">
                   <div className="flex items-center gap-3">
                     <MessageSquare className="h-5 w-5 text-primary" />
                     <span className="text-sm font-bold tracking-tight text-on-surface">Message Requests</span>
                   </div>
-                  <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-on-primary-fixed">{requestThreads.length}</span>
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-on-primary-fixed">{pendingRequests.length}</span>
                 </Button>
               </div>
-
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-outline" />
                 <Input
@@ -492,51 +407,59 @@ function BoosterChatsPageContent() {
                   placeholder="Search conversations..."
                   type="text"
                   value={search}
-                  onChange={(event) => setSearch(event.target.value)}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
             </div>
 
             <div className="custom-scrollbar mt-2 flex-1 overflow-y-auto px-3 pb-6">
+              {threadError && (
+                <p className="px-4 py-2 text-xs text-red-400">{threadError}</p>
+              )}
+              {filteredList.length === 0 && !threadError && (
+                <p className="px-4 py-6 text-center text-xs uppercase tracking-widest text-outline-variant">
+                  {tab === "requests" ? "No pending requests." : "No conversations yet."}
+                </p>
+              )}
               {filteredList.map((thread) => {
                 const isActive = activeThread?.id === thread.id;
-
                 return (
                   <Button
                     key={thread.id}
                     type="button"
-                    onClick={() => openThread(thread.id)}
-                    className={`mb-3 h-auto min-h-[92px] w-full cursor-pointer overflow-hidden rounded-xl border p-4 text-left transition-all duration-200 ${isActive
+                    onClick={() => openThread(thread)}
+                    className={`mb-3 h-auto min-h-[80px] w-full cursor-pointer overflow-hidden rounded-xl border p-4 text-left transition-all duration-200 ${
+                      isActive
                         ? "border-cyan-400/25 bg-surface-container-highest/55 shadow-[0_0_0_1px_rgba(143,245,255,0.06)]"
                         : "group border-white/5 bg-surface-container-high/30 hover:border-white/15 hover:bg-surface-container-high/55"
-                      }`}
+                    }`}
                   >
                     <div className="flex gap-4">
                       <div className="relative shrink-0">
-                        <img
-                          className={`h-12 w-12 rounded-xl object-cover ${isActive ? "opacity-100" : "opacity-60 group-hover:opacity-100"}`}
-                          alt="Conversation avatar"
-                          src={thread.avatar}
-                        />
-                        {thread.isOnline ? (
-                          <span className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-500 ${isActive ? "border-4 border-surface-container-highest" : "border-4 border-surface-container"}`}></span>
-                        ) : null}
+                        {thread.avatarUrl ? (
+                          <img
+                            className={`h-12 w-12 rounded-xl object-cover ${isActive ? "opacity-100" : "opacity-60 group-hover:opacity-100"}`}
+                            alt="avatar"
+                            src={thread.avatarUrl}
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-xl bg-surface-container-highest flex items-center justify-center text-lg font-bold text-primary">
+                            {thread.displayName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-center justify-between">
                           <h3 className={`truncate text-sm font-bold ${isActive ? "text-on-surface" : "text-on-surface-variant group-hover:text-on-surface"}`}>
-                            {thread.customer}
+                            {thread.displayName}
                           </h3>
-                          <span className="text-[10px] uppercase tracking-wider text-outline">{thread.lastSeen}</span>
+                          {thread.gameTag && (
+                            <span className="text-[10px] uppercase tracking-wider text-outline">{thread.gameTag}</span>
+                          )}
                         </div>
                         <div className="mb-1">{getClientTag(thread.clientStatus)}</div>
-                        <p
-                          className={`truncate text-xs ${thread.hasUnread
-                              ? "font-semibold text-on-surface"
-                              : "text-outline-variant"
-                            }`}
-                        >
-                          {thread.statusText}
+                        <p className={`truncate text-xs ${thread.hasUnread ? "font-semibold text-on-surface" : "text-outline-variant"}`}>
+                          {thread.lastMessage}
                         </p>
                       </div>
                     </div>
@@ -548,8 +471,8 @@ function BoosterChatsPageContent() {
 
           <section className="relative flex min-h-0 flex-1 flex-col bg-surface-container-low/35">
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
-              <div className="absolute right-[-5%] top-[-10%] h-[320px] w-[320px] rounded-full bg-primary/4 blur-[90px]"></div>
-              <div className="absolute bottom-[-10%] left-[-5%] h-[240px] w-[240px] rounded-full bg-tertiary/4 blur-[72px]"></div>
+              <div className="absolute right-[-5%] top-[-10%] h-[320px] w-[320px] rounded-full bg-primary/4 blur-[90px]" />
+              <div className="absolute bottom-[-10%] left-[-5%] h-[240px] w-[240px] rounded-full bg-tertiary/4 blur-[72px]" />
             </div>
 
             {activeThread ? (
@@ -557,156 +480,129 @@ function BoosterChatsPageContent() {
                 <div className="z-10 flex h-20 items-center justify-between border-b border-white/5 bg-surface/45 px-8 backdrop-blur-md">
                   <div className="flex items-center gap-4">
                     <div className="relative">
-                      <img
-                        className="h-10 w-10 rounded-full border border-outline-variant/30 object-cover"
-                        alt="Active chat avatar"
-                        src={activeThread.avatar}
-                      />
-                      {activeThread.isOnline ? <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-surface bg-green-500"></span> : null}
+                      {activeThread.avatarUrl ? (
+                        <img className="h-10 w-10 rounded-full border border-outline-variant/30 object-cover" alt="avatar" src={activeThread.avatarUrl} />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full border border-outline-variant/30 bg-surface-container-highest flex items-center justify-center font-bold text-primary">
+                          {activeThread.displayName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                     </div>
                     <div>
-                      <h3 className="headline font-bold tracking-tight text-on-surface">{activeThread.customer}</h3>
-                      {activeThread.hasActiveOrder && activeThread.requestType ? (
-                        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                          {activeThread.gameTag} • {activeThread.requestType}
-                        </p>
-                      ) : null}
-                      <p className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-widest text-primary">
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
-                        {activeThread.isOnline ? "Online" : "Offline"}
-                      </p>
+                      <h3 className="headline font-bold tracking-tight text-on-surface">{activeThread.displayName}</h3>
+                      {activeThread.gameTag && (
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{activeThread.gameTag}</p>
+                      )}
                     </div>
                   </div>
+
                   <div className="flex items-center gap-3">
-                    {tab === "requests" ? (
+                    {tab === "requests" && (
                       <>
-                        <Button
-                          type="button"
-                          onClick={declineRequest}
-                          className="rounded-md border border-red-500/50 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-red-300 transition hover:bg-red-500/10"
-                        >
+                        <Button type="button" onClick={declineRequest} className="rounded-md border border-red-500/50 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-red-300 transition hover:bg-red-500/10">
                           Decline
                         </Button>
-                        <Button
-                          type="button"
-                          onClick={acceptRequest}
-                          className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition hover:bg-emerald-500/20"
-                        >
+                        <Button type="button" onClick={acceptRequest} className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition hover:bg-emerald-500/20">
                           Accept Request
                         </Button>
                       </>
-                    ) : null}
-                    <Button className="p-2 text-outline-variant transition-colors hover:text-primary" type="button" aria-label="Open conversation details">
+                    )}
+                    <Button className="p-2 text-outline-variant transition-colors hover:text-primary" type="button" aria-label="Conversation details">
                       <Info className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>
 
-                <div className="custom-scrollbar relative z-10 flex-1 space-y-5 overflow-y-auto p-8">
-                  <div className="flex justify-center">
-                    <span className="rounded-full bg-surface-container px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-outline-variant/50">Today, Oct 24</span>
-                  </div>
+                <div ref={messagesContainerRef} className="custom-scrollbar relative z-10 flex-1 space-y-5 overflow-y-auto p-8">
+                  {messagesLoading && (
+                    <div className="flex justify-center py-8">
+                      <span className="text-xs uppercase tracking-widest text-outline-variant">Loading messages…</span>
+                    </div>
+                  )}
 
-                  {activeThread.messages.map((message) => {
-                    const fromBooster = message.sender === "booster";
+                  {!messagesLoading && realtimeMessages.length === 0 && (
+                    <div className="flex justify-center py-8">
+                      <span className="text-xs uppercase tracking-widest text-outline-variant">No messages yet. Say hi!</span>
+                    </div>
+                  )}
 
+                  {realtimeMessages.map((msg) => {
+                    const fromMe = msg.senderId === userId;
+                    const isImage = msg.messageType === "IMAGE" || (!msg.messageType && looksLikeImage(msg.content));
+                    const isAudio = msg.messageType === "AUDIO" || (!msg.messageType && looksLikeAudio(msg.content));
                     return (
-                      <div key={message.id} className={`flex ${fromBooster ? "ml-auto max-w-[70%] items-end justify-end gap-3" : "max-w-[70%] items-end gap-3"}`}>
-                        <div className={`flex ${fromBooster ? "items-end" : ""} flex-col gap-1`}>
-                          <div
-                            className={`px-4 py-3 ${fromBooster
-                                ? "rounded-2xl rounded-br-none border border-white/40 bg-slate-900/98 shadow-[0_8px_18px_rgba(0,0,0,0.32)]"
-                                : "rounded-2xl rounded-bl-none border border-white/10 bg-surface-container-highest/85"
-                              }`}
-                          >
-                            {message.type === "image" ? (
-                              <img src={message.content} alt="Sent in chat" className="max-h-64 rounded-lg object-cover" />
-                            ) : message.type === "voice" ? (
-                              <p className={`inline-flex items-center gap-2 text-sm ${fromBooster ? "text-white" : "text-on-surface"}`}>
-                                <Mic className="h-4 w-4" />
-                                {message.content}
-                              </p>
+                      <div key={msg.id} className={`flex ${fromMe ? "ml-auto max-w-[70%] items-end justify-end gap-3" : "max-w-[70%] items-end gap-3"}`}>
+                        <div className={`flex ${fromMe ? "items-end" : ""} flex-col gap-1`}>
+                          {!fromMe && (
+                            <span className="ml-1 text-[10px] text-outline">{msg.sender?.displayName || msg.sender?.username}</span>
+                          )}
+                          <div className={`${isImage ? "p-0" : "px-4 py-3"} ${fromMe
+                            ? "rounded-2xl rounded-br-none border border-white/40 bg-slate-900/98 shadow-[0_8px_18px_rgba(0,0,0,0.32)]"
+                            : "rounded-2xl rounded-bl-none border border-white/10 bg-surface-container-highest/85"
+                          }`}>
+                            {isImage ? (
+                              <a href={msg.content} target="_blank" rel="noreferrer">
+                                <img src={msg.content} alt="Shared image" className="max-h-60 max-w-xs rounded-2xl object-cover" />
+                              </a>
+                            ) : isAudio ? (
+                              <audio controls src={msg.content} className="h-10 w-52" />
                             ) : (
-                              <p className={`text-sm ${fromBooster ? "font-medium text-white" : "text-on-surface"}`}>{message.content}</p>
+                              <p className={`text-sm ${fromMe ? "font-medium text-white" : "text-on-surface"}`}>{msg.content}</p>
                             )}
                           </div>
-                          <span className={`text-[10px] text-outline ${fromBooster ? "mr-1 text-right" : "ml-1"}`}>{message.time}</span>
+                          <span className={`text-[10px] text-outline ${fromMe ? "mr-1 text-right" : "ml-1"}`}>
+                            {new Date(msg.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
                         </div>
                       </div>
                     );
                   })}
-
-                  {isClientTyping ? (
-                    <div className="w-fit rounded-full bg-surface-container-high px-3 py-2">
-                      <span className="flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 animate-[typingDots_900ms_ease-in-out_infinite] rounded-full bg-primary"></span>
-                        <span className="h-1.5 w-1.5 animate-[typingDots_900ms_ease-in-out_120ms_infinite] rounded-full bg-primary"></span>
-                        <span className="h-1.5 w-1.5 animate-[typingDots_900ms_ease-in-out_240ms_infinite] rounded-full bg-primary"></span>
-                      </span>
-                    </div>
-                  ) : null}
                 </div>
 
                 <div className="z-10 border-t border-white/5 bg-surface/58 p-6 backdrop-blur-md">
-                  <FileInput ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={sendImage} />
-
-                  {isEmojiOpen ? (
+                  <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  {isEmojiOpen && (
                     <div className="mb-3 flex w-fit gap-1 rounded-xl border border-outline-variant/20 bg-surface-container p-2 shadow-xl">
                       {emojiPool.map((emoji) => (
-                        <Button
-                          key={emoji}
-                          type="button"
-                          onClick={() => {
-                            setDraft((current) => `${current}${emoji}`);
-                            setIsEmojiOpen(false);
-                          }}
-                          className="rounded px-2 py-1 text-base transition hover:bg-white/10"
-                        >
+                        <Button key={emoji} type="button" onClick={() => { setDraft((d) => `${d}${emoji}`); setIsEmojiOpen(false); }} className="rounded px-2 py-1 text-base transition hover:bg-white/10">
                           {emoji}
                         </Button>
                       ))}
                     </div>
-                  ) : null}
+                  )}
+
+                  {isRecording && (
+                    <div className="mb-3 flex items-center gap-3 rounded-xl border border-error/30 bg-error/10 px-4 py-2">
+                      <div className="h-2 w-2 animate-pulse rounded-full bg-error" />
+                      <span className="text-xs font-bold uppercase tracking-widest text-error">Recording {recordingSeconds}s</span>
+                      <Button type="button" onClick={stopRecording} className="ml-auto p-1 text-error hover:text-error/80" aria-label="Stop recording">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-4 rounded-2xl border border-outline-variant/10 bg-surface-container-low/90 p-2 shadow-lg shadow-black/20">
-                    <Button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-outline-variant transition-colors hover:text-tertiary" aria-label="Attach image">
-                      <PlusCircle className="h-5 w-5" />
+                    <Button type="button" onClick={() => imageInputRef.current?.click()} disabled={tab === "requests" || isUploading || isRecording} className="p-2 text-outline-variant transition-colors hover:text-tertiary" aria-label="Attach image">
+                      {isUploading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-tertiary border-t-transparent" /> : <ImageIcon className="h-5 w-5" />}
                     </Button>
-                    <Button type="button" onClick={() => setIsEmojiOpen((current) => !current)} className="p-2 text-outline-variant transition-colors hover:text-secondary" aria-label="Toggle emoji picker">
+                    <Button type="button" onClick={isRecording ? stopRecording : startRecording} disabled={tab === "requests" || isUploading} className={`p-2 transition-colors ${isRecording ? "text-error hover:text-error/80" : "text-outline-variant hover:text-secondary"}`} aria-label={isRecording ? "Stop recording" : "Record voice note"}>
+                      {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                    </Button>
+                    <Button type="button" onClick={() => setIsEmojiOpen((c) => !c)} className="p-2 text-outline-variant transition-colors hover:text-secondary" aria-label="Toggle emoji picker">
                       <Smile className="h-5 w-5" />
                     </Button>
                     <Input
                       className="flex-1 border-none bg-transparent text-sm text-on-surface placeholder:text-outline-variant/50 focus:ring-0"
-                      placeholder={`Type a message to ${activeThread.customer.split(" ")[0]}...`}
+                      placeholder={tab === "requests" ? "Accept the request to start messaging…" : isRecording ? "Recording voice note…" : `Message ${activeThread.displayName.split(" ")[0]}…`}
                       type="text"
                       value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          sendText();
-                        }
-                      }}
+                      disabled={tab === "requests" || isRecording}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendMessage(draft, "TEXT"); setDraft(""); } }}
                     />
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="icon"
-                      onClick={sendText}
-                      className="h-10 w-10 rounded-xl active:scale-90"
-                      aria-label="Send message"
-                    >
-                      <Send className="h-4 w-4 text-slate-950 stroke-[2.5]" />
+                    <Button type="button" onClick={() => { sendMessage(draft, 'TEXT'); setDraft(''); }} disabled={tab === "requests" || isUploading || isRecording || !draft.trim()} className="h-10 w-10 rounded-xl active:scale-95" variant="primary" size="icon">
+                      <Send className="h-4 w-4 text-slate-950" />
                     </Button>
-                  </div>
-                  <div className="mt-3 flex justify-between px-2">
-                    <div className="flex gap-4">
-                      <Button type="button" onClick={sendVoice} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-outline">
-                        <Mic className="h-3.5 w-3.5" />
-                        Voice
-                      </Button>
-                    </div>
-                    <span className="font-mono text-[10px] tracking-tighter text-outline-variant/40">ZENITH_ENCRYPTED_COMMS_v2.0</span>
                   </div>
                 </div>
               </>
@@ -731,4 +627,3 @@ export default function BoosterChatsPage() {
     </Suspense>
   );
 }
-

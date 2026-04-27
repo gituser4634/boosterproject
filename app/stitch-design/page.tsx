@@ -35,7 +35,6 @@ export default function StitchDesignPage() {
   const { data: session } = useSession();
   const isClientLoggedIn = session?.user?.role === "CLIENT";
   const isBoosterLoggedIn = session?.user?.role === "BOOSTER";
-  const navItems = ["Services", "Games", "About"];
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginType, setLoginType] = useState<"booster" | "client">("booster");
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -294,21 +293,7 @@ export default function StitchDesignPage() {
             </Link>
           </div>
 
-          <nav className="hidden items-center gap-8 md:flex">
-            {navItems.map((item, index) => (
-              <a
-                key={item}
-                href="#"
-                className={
-                  index === 0
-                    ? "border-b-2 border-primary-fixed pb-1 font-bold text-primary-fixed"
-                    : "text-on-surface transition-colors hover:text-primary-fixed"
-                }
-              >
-                {item}
-              </a>
-            ))}
-          </nav>
+
 
           <div className="flex items-center gap-4">
             <a

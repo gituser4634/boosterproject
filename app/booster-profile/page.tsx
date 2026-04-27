@@ -130,6 +130,19 @@ export default function BoosterProfilePage() {
     next: "",
     confirm: "",
   });
+  const [hideSidebar, setHideSidebar] = useState(false);
+
+  // Persistence for UI preferences
+  useEffect(() => {
+    const saved = window.localStorage.getItem("zenith-hide-sidebar") === "true";
+    setHideSidebar(saved);
+  }, []);
+
+  const toggleHideSidebar = () => {
+    const next = !hideSidebar;
+    setHideSidebar(next);
+    window.localStorage.setItem("zenith-hide-sidebar", String(next));
+  };
 
   // Load real user data on mount
   useEffect(() => {
@@ -866,11 +879,25 @@ export default function BoosterProfilePage() {
     );
   }
 
+  const boosterNavItems = [
+    { key: "dashboard", label: "Dashboard", href: "/booster-dashboard", icon: <LayoutDashboard className="h-5 w-5" />, isActive: false },
+    { key: "requests", label: "Requests", href: "/booster-requests", icon: <ClipboardList className="h-5 w-5" />, isActive: false },
+    { key: "payments", label: "Payments", href: "/booster-payments", icon: <Wallet className="h-5 w-5" />, isActive: false },
+    { key: "chats", label: "Chats", href: "/booster-chats", icon: <MessageSquare className="h-5 w-5" />, isActive: false },
+    { key: "settings", label: "Settings", href: "/booster-profile", icon: <Settings className="h-5 w-5" />, isActive: true },
+  ];
+
   return (
     <>
       <BoosterTopBar
+        brandLabel="ZENITH BOOSTER"
+        brandClassName="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400"
+        headerClassName={`fixed top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/5 bg-[#0b0e14]/65 px-8 ${hideSidebar ? "" : "pl-72"} shadow-sm shadow-black/20 backdrop-blur-xl`}
+        rightClassName="flex items-center gap-6 pr-8"
         avatarUrl={avatarUrl}
+        navItems={hideSidebar ? boosterNavItems : undefined}
         avatarAlt="Booster Profile Avatar"
+        avatarBorderClassName="border-cyan-400/30"
         isNotificationsOn={isNotificationsOn}
         unreadNotificationCount={realUnreadCount}
         isNotificationsPanelOpen={isNotificationsPanelOpen}
@@ -891,9 +918,9 @@ export default function BoosterProfilePage() {
         onProfileAction={handleProfileAction}
       />
 
-      {isLoggedInBooster ? (
+      {isLoggedInBooster && !hideSidebar ? (
         <BoosterSidebar
-          active="dashboard"
+          active="settings"
           isOnline={isOnline}
           onToggleOnline={handleToggleOnline}
           mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
@@ -902,8 +929,8 @@ export default function BoosterProfilePage() {
         />
       ) : null}
 
-      <main className={`h-screen overflow-y-auto px-6 pb-24 pt-24 ${isLoggedInBooster ? "ml-64" : ""}`}>
-        <div className="mx-auto max-w-5xl">
+      <main className={`h-screen overflow-y-auto px-6 pb-24 pt-24 transition-all duration-300 ${isLoggedInBooster && !hideSidebar ? "ml-64" : ""}`}>
+        <div className={`mx-auto ${hideSidebar ? "max-w-7xl" : "max-w-5xl"}`}>
           <div
             className={`mb-6 rounded-lg border px-4 py-3 text-xs font-bold uppercase tracking-wider ${
               isDeactivated
@@ -1380,6 +1407,30 @@ export default function BoosterProfilePage() {
                   className="mt-4 w-full rounded-md border border-secondary/20 bg-transparent px-6 py-3 font-label text-xs font-bold uppercase tracking-widest text-secondary transition-all hover:border-secondary hover:bg-secondary/5"
                 >
                   Change Password
+                </Button>
+              </div>
+            </div>
+
+            {/* Display Preferences */}
+            <div className="ghost-border rounded-xl bg-surface-container-low p-8 md:col-span-12">
+              <div className="mb-8 flex items-center gap-4">
+                <div className="rounded-lg bg-primary/10 p-3">
+                  <MonitorSmartphone className="h-5 w-5 text-cyan-400" />
+                </div>
+                <h2 className="font-headline text-2xl font-bold uppercase tracking-tight text-on-surface">Display Preferences</h2>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+                <div className="space-y-1">
+                  <Label className="font-label text-sm font-bold text-on-surface">Hide Sidebar</Label>
+                  <p className="text-xs text-on-surface-variant">Switch to a minimal icon-based top navigation. Perfect for more focus.</p>
+                </div>
+                <Button 
+                  type="button" 
+                  onClick={toggleHideSidebar}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${hideSidebar ? 'bg-cyan-400' : 'bg-surface-container-highest'}`}
+                >
+                  <span className={`${hideSidebar ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
                 </Button>
               </div>
             </div>

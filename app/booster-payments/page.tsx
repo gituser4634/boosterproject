@@ -12,6 +12,10 @@ import {
   Filter,
   Search,
   WalletCards,
+  LayoutDashboard,
+  ClipboardList,
+  MessageSquare,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BoosterMobileNav, BoosterSidebar } from "@/components/booster/shell-navigation";
@@ -43,7 +47,13 @@ export default function BoosterPaymentsPage() {
   } = useNotifications();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [savedPrimaryGame, setSavedPrimaryGame] = useState("");
+  const [hideSidebar, setHideSidebar] = useState(false);
   const savedMainGameStorageKey = "booster-main-game";
+
+  useEffect(() => {
+    const savedSidebar = window.localStorage.getItem("zenith-hide-sidebar") === "true";
+    setHideSidebar(savedSidebar);
+  }, []);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(savedMainGameStorageKey) ?? "";
@@ -169,10 +179,25 @@ export default function BoosterPaymentsPage() {
     URL.revokeObjectURL(downloadUrl);
   };
 
+  const boosterNavItems = [
+    { key: "dashboard", label: "Dashboard", href: "/booster-dashboard", icon: <LayoutDashboard className="h-5 w-5" />, isActive: false },
+    { key: "requests", label: "Requests", href: "/booster-requests", icon: <ClipboardList className="h-5 w-5" />, isActive: false },
+    { key: "payments", label: "Payments", href: "/booster-payments", icon: <WalletCards className="h-5 w-5" />, isActive: true },
+    { key: "chats", label: "Chats", href: "/booster-chats", icon: <MessageSquare className="h-5 w-5" />, isActive: false },
+    { key: "settings", label: "Settings", href: "/booster-profile", icon: <Settings className="h-5 w-5" />, isActive: false },
+  ];
+
   return (
     <>
       <BoosterTopBar
+        brandLabel="ZENITH BOOSTER"
+        brandClassName="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400"
+        headerClassName={`fixed top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/5 bg-[#0b0e14]/65 px-8 ${hideSidebar ? "" : "pl-72"} shadow-sm shadow-black/20 backdrop-blur-xl`}
+        rightClassName="flex items-center gap-6 pr-8"
         avatarUrl={avatarUrl}
+        navItems={hideSidebar ? boosterNavItems : undefined}
+        avatarAlt="User Avatar"
+        avatarBorderClassName="border-cyan-400/30"
         isNotificationsOn={isNotificationsOn}
         unreadNotificationCount={realUnreadCount}
         isNotificationsPanelOpen={isNotificationsPanelOpen}
@@ -195,26 +220,26 @@ export default function BoosterPaymentsPage() {
             router.push("/booster-profile");
             return;
           }
-
           if (action === "Logout") {
             await signOut({ callbackUrl: "/" });
             return;
           }
-
           setIsProfileMenuOpen(false);
         }}
       />
 
-      <BoosterSidebar
-        active="payments"
-        isOnline={isSidebarOnline}
-        onToggleOnline={() => setIsSidebarOnline((current) => !current)}
-        mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
-        rankInfo={userProfile?.boosterProfile?.rankInfo}
-        xp={userProfile?.boosterProfile?.xp}
-      />
+      {!hideSidebar && (
+        <BoosterSidebar
+          active="payments"
+          isOnline={isSidebarOnline}
+          onToggleOnline={() => setIsSidebarOnline((current) => !current)}
+          mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
+          rankInfo={userProfile?.boosterProfile?.rankInfo}
+          xp={userProfile?.boosterProfile?.xp}
+        />
+      )}
 
-      <main className="ml-64 h-screen overflow-y-auto bg-background pb-12 pl-6 pr-6 pt-24">
+      <main className={`h-screen overflow-y-auto bg-background pb-12 pl-6 pr-6 pt-24 transition-all duration-300 ${hideSidebar ? "" : "ml-64"}`}>
         <div className="mx-auto max-w-7xl">
           <header className="mb-12 flex flex-col justify-between gap-8 md:flex-row md:items-end">
             <div className="max-w-2xl">

@@ -96,7 +96,8 @@ export default async function BoosterProfilePage({ params }: Props) {
         })),
         serverRank: bRank.name,
         serverRankIcon: bRank.icon,
-        serverRankColor: bRank.color
+        serverRankColor: bRank.color,
+        boosterUserId: boosterProfile.userId,
       };
     }
   } catch (error) {

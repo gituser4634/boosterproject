@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -14,13 +14,23 @@ import {
   Languages,
   MapPin,
   MessageCircle,
-  Search,
+  Search as SearchIcon,
   Shield,
   Sparkles,
   Star,
   Trophy,
   Zap,
+  Home,
+  ClipboardList,
+  LayoutDashboard,
+  Wallet,
+  Settings as SettingsIcon,
+  MessageSquare,
 } from "lucide-react";
+
+import { BoosterTopBar } from "@/components/booster/top-bar";
+import { useNotifications } from "@/hooks/use-notifications";
+import { signOut } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,6 +132,7 @@ export interface BoosterProfileData {
   serverRank?: string;
   serverRankIcon?: string;
   serverRankColor?: string;
+  boosterUserId?: string;
 }
 
 export function BoosterProfileView({
@@ -138,11 +149,65 @@ export function BoosterProfileView({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<"all" | "clients" | "boosters">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isMessaging, setIsMessaging] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
+
+  const [hideSidebar, setHideSidebar] = useState(false);
+  const [isNotificationsOn, setIsNotificationsOn] = useState(true);
+  const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("zenith-hide-sidebar") === "true";
+    setHideSidebar(saved);
+  }, []);
+
+  const { notifications: realNotifications, unreadCount: realUnreadCount, markAllAsRead } = useNotifications();
+  const avatarUrl = session?.user?.image ?? "/booster-pfps/default-avatar.svg";
+
+  const clientNavItems = [
+    { key: "home", label: "Home", href: "/", icon: <Home className="h-5 w-5" />, isActive: false },
+    { key: "browse", label: "Browse", href: "/booster-browse", icon: <SearchIcon className="h-5 w-5" />, isActive: false },
+    { key: "orders", label: "Orders", href: "/client-orders", icon: <ClipboardList className="h-5 w-5" />, isActive: false },
+    { key: "chats", label: "Messages", href: "/client-chats", icon: <MessageSquare className="h-5 w-5" />, isActive: false },
+    { key: "settings", label: "Settings", href: "/client-settings", icon: <SettingsIcon className="h-5 w-5" />, isActive: false },
+  ];
+
+  const boosterNavItems = [
+    { key: "dashboard", label: "Dashboard", href: "/booster-dashboard", icon: <LayoutDashboard className="h-5 w-5" />, isActive: false },
+    { key: "requests", label: "Requests", href: "/booster-requests", icon: <ClipboardList className="h-5 w-5" />, isActive: false },
+    { key: "payments", label: "Payments", href: "/booster-payments", icon: <Wallet className="h-5 w-5" />, isActive: false },
+    { key: "chats", label: "Chats", href: "/booster-chats", icon: <MessageSquare className="h-5 w-5" />, isActive: false },
+    { key: "settings", label: "Settings", href: "/booster-profile", icon: <SettingsIcon className="h-5 w-5" />, isActive: false },
+  ];
+
+  const currentNavItems = session?.user?.role === "BOOSTER" ? boosterNavItems : clientNavItems;
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     router.push(buildBrowseSearchUrl(searchScope, searchQuery));
     setIsSearchOpen(false);
+  };
+
+  const handleMessageBooster = async () => {
+    if (!isClientLoggedIn) { router.push("/login"); return; }
+    if (!data.boosterUserId) return;
+    setIsMessaging(true);
+    setMessageError(null);
+    try {
+      const res = await fetch("/api/chat-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ boosterUserId: data.boosterUserId }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setMessageError(json.error ?? "Could not start chat."); return; }
+      router.push(`/client-chats?request=${json.chatRequest.id}`);
+    } catch {
+      setMessageError("Network error. Please try again.");
+    } finally {
+      setIsMessaging(false);
+    }
   };
 
   // Fallback data if none is provided
@@ -194,131 +259,155 @@ export function BoosterProfileView({
 
   return (
     <div className="min-h-screen bg-surface text-on-surface font-body selection:bg-primary selection:text-on-primary-fixed">
-      <header className="ghost-border fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface-variant/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-8 font-headline tracking-tight">
-          <Link
-            href="/"
-            className="text-2xl font-bold tracking-tighter text-primary-fixed transition hover:text-primary"
-          >
-            Zenith Boost
-          </Link>
-
-          <div className="flex items-center gap-2">
+      {isClientLoggedIn ? (
+        <BoosterTopBar
+          brandLabel="ZENITH BOOST"
+          brandHref="/"
+          brandClassName="text-2xl font-bold tracking-tighter text-primary-fixed transition hover:text-primary"
+          headerClassName="fixed top-0 z-50 flex h-16 w-full items-center justify-between border-b border-white/10 bg-[#0c0e14]/70 px-8 shadow-md backdrop-blur-xl"
+          rightClassName="flex items-center gap-6"
+          avatarUrl={avatarUrl}
+          navItems={hideSidebar ? currentNavItems : undefined}
+          avatarAlt="User Avatar"
+          avatarBorderClassName="border-primary/20"
+          isNotificationsOn={isNotificationsOn}
+          unreadNotificationCount={realUnreadCount}
+          isNotificationsPanelOpen={isNotificationsPanelOpen}
+          onToggleNotificationsPanel={() => {
+            setIsProfileMenuOpen(false);
+            setIsNotificationsPanelOpen((c) => !c);
+          }}
+          onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
+          onToggleNotifications={() => setIsNotificationsOn((c) => !c)}
+          onMarkNotificationsRead={markAllAsRead}
+          notifications={realNotifications}
+          isProfileMenuOpen={isProfileMenuOpen}
+          onToggleProfileMenu={() => {
+            setIsNotificationsPanelOpen(false);
+            setIsProfileMenuOpen((c) => !c);
+          }}
+          onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
+          onProfileAction={async (action) => {
+            if (action === "Settings") { router.push(session?.user?.role === "BOOSTER" ? "/booster-profile" : "/client-settings"); return; }
+            if (action === "Logout") { await signOut({ callbackUrl: "/" }); return; }
+            setIsProfileMenuOpen(false);
+          }}
+        />
+      ) : (
+        <header className="ghost-border fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface-variant/70 backdrop-blur-xl">
+          <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-8 font-headline tracking-tight">
             <Link
               href="/"
-              className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide"
+              className="text-2xl font-bold tracking-tighter text-primary-fixed transition hover:text-primary"
             >
-              Home
+              Zenith Boost
             </Link>
-            <Link
-              href="/booster-browse"
-              className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide"
-            >
-              Browse
-            </Link>
-          </div>
 
-          <nav className="hidden items-center gap-8 md:flex">
-            {navItems.map((item, index) => (
-              <a
-                key={item}
-                href="#"
-                className={
-                  index === 0
-                    ? "border-b-2 border-primary-fixed pb-1 font-bold text-primary-fixed"
-                    : "text-on-surface transition-colors hover:text-primary-fixed"
-                }
+            <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide"
               >
-                {item}
-              </a>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-4">
-            <a
-              href="https://discord.gg/FkGNYr2R"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Join our Discord"
-              className="top-panel-icon"
-            >
-              <img
-                src="https://cdn.simpleicons.org/discord/5865F2"
-                alt="Discord"
-                className="h-5 w-5 opacity-90"
-              />
-            </a>
-            <div className="relative z-[70]">
-              <Button
-                type="button"
-                aria-label="Search"
-                onClick={() => setIsSearchOpen((current) => !current)}
-                className="top-panel-icon h-9 w-9"
-                variant="ghost"
-                size="icon"
+                Home
+              </Link>
+              <Link
+                href="/booster-browse"
+                className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide"
               >
-                <Search size={18} />
-              </Button>
-
-              {isSearchOpen ? (
-                <>
-                  <Button
-                    type="button"
-                    aria-label="Close search panel"
-                    onClick={() => setIsSearchOpen(false)}
-                    className="fixed inset-0 z-[69] cursor-default"
-                    variant="ghost"
-                    size="icon"
-                  ></Button>
-                  <form
-                    onSubmit={handleSearchSubmit}
-                    className="ghost-border absolute right-0 top-12 z-[70] w-[340px] rounded-xl border border-white/10 bg-surface-container/95 p-4 shadow-2xl"
-                  >
-                    <Label className="text-[10px] tracking-[0.2em]">Search In</Label>
-                    <Select
-                      value={searchScope}
-                      onChange={(event) =>
-                        setSearchScope(event.target.value as "all" | "clients" | "boosters")
-                      }
-                      className="mb-3 w-full rounded-md border border-outline/30 bg-surface-container-high px-3 py-2 text-sm uppercase tracking-wide text-on-surface outline-none transition focus:border-primary"
-                    >
-                      <option value="all">All</option>
-                      <option value="clients">Clients</option>
-                      <option value="boosters">Boosters</option>
-                    </Select>
-
-                    <Label className="text-[10px] tracking-[0.2em]">Search Query</Label>
-                    <Input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      placeholder="Type a name, game, or rank..."
-                      className="mb-4 border-outline/30 bg-surface-container-high px-3 py-2"
-                    />
-
-                    <Button
-                      type="submit"
-                      className="cta-flame-soft cta-flame-soft-primary w-full"
-                      variant="primary"
-                      size="sm"
-                    >
-                      Search
-                    </Button>
-                  </form>
-                </>
-              ) : null}
+                Browse
+              </Link>
             </div>
-            {isClientLoggedIn ? (
-              <Button
-                type="button"
-                className="top-panel-link px-4 py-2"
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push(session?.user?.role === "BOOSTER" ? "/booster-dashboard" : "/client-dashboard")}
+
+            <nav className="hidden items-center gap-8 md:flex">
+              {navItems.map((item, index) => (
+                <a
+                  key={item}
+                  href="#"
+                  className={
+                    index === 0
+                      ? "border-b-2 border-primary-fixed pb-1 font-bold text-primary-fixed"
+                      : "text-on-surface transition-colors hover:text-primary-fixed"
+                  }
+                >
+                  {item}
+                </a>
+              ))}
+            </nav>
+
+            <div className="flex items-center gap-4">
+              <a
+                href="https://discord.gg/FkGNYr2R"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Join our Discord"
+                className="top-panel-icon"
               >
-                Dashboard
-              </Button>
-            ) : (
+                <img
+                  src="https://cdn.simpleicons.org/discord/5865F2"
+                  alt="Discord"
+                  className="h-5 w-5 opacity-90"
+                />
+              </a>
+              <div className="relative z-[70]">
+                <Button
+                  type="button"
+                  aria-label="Search"
+                  onClick={() => setIsSearchOpen((current) => !current)}
+                  className="top-panel-icon h-9 w-9"
+                  variant="ghost"
+                  size="icon"
+                >
+                  <SearchIcon size={18} />
+                </Button>
+
+                {isSearchOpen ? (
+                  <>
+                    <Button
+                      type="button"
+                      aria-label="Close search panel"
+                      onClick={() => setIsSearchOpen(false)}
+                      className="fixed inset-0 z-[69] cursor-default"
+                      variant="ghost"
+                      size="icon"
+                    ></Button>
+                    <form
+                      onSubmit={handleSearchSubmit}
+                      className="ghost-border absolute right-0 top-12 z-[70] w-[340px] rounded-xl border border-white/10 bg-surface-container/95 p-4 shadow-2xl"
+                    >
+                      <Label className="text-[10px] tracking-[0.2em]">Search In</Label>
+                      <Select
+                        value={searchScope}
+                        onChange={(event) =>
+                          setSearchScope(event.target.value as "all" | "clients" | "boosters")
+                        }
+                        className="mb-3 w-full rounded-md border border-outline/30 bg-surface-container-high px-3 py-2 text-sm uppercase tracking-wide text-on-surface outline-none transition focus:border-primary"
+                      >
+                        <option value="all">All</option>
+                        <option value="clients">Clients</option>
+                        <option value="boosters">Boosters</option>
+                      </Select>
+
+                      <Label className="text-[10px] tracking-[0.2em]">Search Query</Label>
+                      <Input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        placeholder="Type a name, game, or rank..."
+                        className="mb-4 border-outline/30 bg-surface-container-high px-3 py-2"
+                      />
+
+                      <Button
+                        type="submit"
+                        className="cta-flame-soft cta-flame-soft-primary w-full"
+                        variant="primary"
+                        size="sm"
+                      >
+                        Search
+                      </Button>
+                    </form>
+                  </>
+                ) : null}
+              </div>
               <Button
                 type="button"
                 className="top-panel-link px-4 py-2"
@@ -328,10 +417,10 @@ export function BoosterProfileView({
               >
                 Login
               </Button>
-            )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <main className="pt-20">
         <section className="relative flex min-h-[716px] items-end overflow-hidden px-8 pb-20">
@@ -346,7 +435,7 @@ export function BoosterProfileView({
           </div>
 
           <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-end gap-12 lg:grid-cols-12">
-            <div className="lg:col-span-8">
+            <div className={session?.user?.role === "BOOSTER" ? "lg:col-span-12" : "lg:col-span-8"}>
               <div className="mb-6 flex flex-wrap items-center gap-4">
                 <span className="rounded-sm border border-outline-variant/40 bg-tertiary/20 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-tertiary">
                   Top Rated Booster
@@ -415,40 +504,45 @@ export function BoosterProfileView({
               </div>
             </div>
 
-            <div className="relative rounded-xl border border-outline-variant/30 bg-surface-container-high/90 p-8 shadow-2xl backdrop-blur-2xl lg:col-span-4">
-              <div className="mb-8 flex items-start justify-between">
-                <div>
-                  <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Starting At</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-headline text-4xl font-bold text-primary">${data.hourlyRate.toFixed(2)}</span>
-                    <span className="text-sm uppercase text-on-surface-variant">/hr</span>
+              {session?.user?.role !== "BOOSTER" && (
+              <div className="relative rounded-xl border border-outline-variant/30 bg-surface-container-high/90 p-8 shadow-2xl backdrop-blur-2xl lg:col-span-4">
+                <div className="mb-8 flex items-start justify-between">
+                  <div>
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Starting At</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="font-headline text-4xl font-bold text-primary">${data.hourlyRate.toFixed(2)}</span>
+                      <span className="text-sm uppercase text-on-surface-variant">/hr</span>
+                    </div>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full border border-outline-variant/20 bg-surface-container">
+                    <Zap className="h-5 w-5 text-secondary" />
                   </div>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-outline-variant/20 bg-surface-container">
-                  <Zap className="h-5 w-5 text-secondary" />
+
+                <div className="mb-8 space-y-4">
+                  {["Protection Guaranteed", "Private Live Stream Included", "Priority Support"].map((item) => (
+                    <div key={item} className="flex items-center gap-3 text-sm text-on-surface-variant">
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
                 </div>
+
+                <Button variant="primary" size="lg" className="mb-4 w-full text-sm font-black uppercase tracking-widest">
+                  Create Order
+                </Button>
+
+                <Button variant="outline" size="lg" className="mb-4 w-full text-sm font-black uppercase tracking-widest" onClick={handleMessageBooster} disabled={isMessaging}>
+                  <MessageCircle className="h-4 w-4" />
+                  {isMessaging ? "Opening chat..." : "Message Booster"}
+                </Button>
+                {messageError && (
+                  <p className="mb-3 text-center text-[11px] font-bold uppercase tracking-widest text-error">{messageError}</p>
+                )}
+
+                <p className="text-center text-[10px] uppercase tracking-wider text-on-surface-variant">Fast delivery • 24/7 Availability</p>
               </div>
-
-              <div className="mb-8 space-y-4">
-                {["Protection Guaranteed", "Private Live Stream Included", "Priority Support"].map((item) => (
-                  <div key={item} className="flex items-center gap-3 text-sm text-on-surface-variant">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-
-              <Button variant="primary" size="lg" className="mb-4 w-full text-sm font-black uppercase tracking-widest">
-                Create Order
-              </Button>
-
-              <Button variant="outline" size="lg" className="mb-4 w-full text-sm font-black uppercase tracking-widest">
-                <MessageCircle className="h-4 w-4" />
-                Message Booster
-              </Button>
-
-              <p className="text-center text-[10px] uppercase tracking-wider text-on-surface-variant">Fast delivery • 24/7 Availability</p>
-            </div>
+            )}
           </div>
         </section>
 

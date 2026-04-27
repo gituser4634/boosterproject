@@ -62,6 +62,8 @@ model User {
   reportsFiled    Report[]       @relation("ReportReporter")
   reportsReceived Report[]       @relation("ReportReportedUser")
   notifications   Notification[]
+  chatRequestsSent     ChatRequest[] @relation("ChatRequestSender")
+  chatRequestsReceived ChatRequest[] @relation("ChatRequestReceiver")
 
   @@index([role])
   @@index([isActive])
@@ -221,18 +223,30 @@ model Payout {
 }
 
 model Message {
-  id        String   @id @default(uuid()) @db.Uuid
-  orderId   String   @db.Uuid
-  senderId  String   @db.Uuid
-  content   String
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  sender    User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+  id          String      @id @default(uuid()) @db.Uuid
+  orderId     String?     @db.Uuid
+  senderId    String      @db.Uuid
+  content     String
+  messageType MessageType @default(TEXT)
+  isRead      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  order       Order?      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender      User        @relation("MessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+
+  // For non-order chats (pending requests)
+  chatRequestId String?      @db.Uuid
+  chatRequest   ChatRequest? @relation(fields: [chatRequestId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([senderId])
   @@index([orderId, createdAt])
+  @@index([chatRequestId])
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
 }
 
 model Review {
@@ -317,4 +331,28 @@ model Service {
 
   @@index([gameId])
   @@index([type])
+}
+
+enum ChatRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+// Non-order chat initiated by a CLIENT to a BOOSTER.
+// Sits in the booster's "Message Requests" until accepted/declined.
+model ChatRequest {
+  id         String            @id @default(uuid()) @db.Uuid
+  senderId   String            @db.Uuid   // always the client
+  receiverId String            @db.Uuid   // always the booster
+  status     ChatRequestStatus @default(PENDING)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  sender     User              @relation("ChatRequestSender",   fields: [senderId],   references: [id], onDelete: Cascade)
+  receiver   User              @relation("ChatRequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  messages   Message[]
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@index([senderId])
 }

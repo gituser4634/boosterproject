@@ -33,6 +33,7 @@ type BoosterTopBarProps = {
   onToggleProfileMenu: () => void;
   onCloseProfileMenu: () => void;
   onProfileAction: (action: "View Profile" | "Settings" | "Help Support" | "Logout") => void;
+  navItems?: Array<{ key: string; label: string; href: string; icon: React.ReactNode; isActive: boolean }>;
 };
 
 const profileActions: Array<"View Profile" | "Settings" | "Help Support" | "Logout"> = [
@@ -63,6 +64,7 @@ function BoosterTopBar({
   onToggleProfileMenu,
   onCloseProfileMenu,
   onProfileAction,
+  navItems,
 }: BoosterTopBarProps) {
   return (
     <header className={headerClassName}>
@@ -71,6 +73,26 @@ function BoosterTopBar({
           {brandLabel}
         </Link>
       </div>
+
+      {/* Inline Navigation Icons (only visible when sidebar is hidden) */}
+      {navItems && navItems.length > 0 && (
+        <nav className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1">
+          {navItems.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 ${
+                item.isActive
+                  ? "bg-primary/20 text-primary shadow-[0_0_15px_rgba(143,245,255,0.15)]"
+                  : "text-slate-500 hover:bg-white/5 hover:text-on-surface"
+              }`}
+              title={item.label}
+            >
+              {item.icon}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       <div className={rightClassName}>
         <div className="relative z-[55]">

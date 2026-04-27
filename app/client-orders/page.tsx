@@ -1,11 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { Home, Search, ClipboardList, MessageSquare, Settings } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
 import { BoosterProfileMenu } from "@/components/shared/booster-profile-menu";
+import { ClientSidebar, ClientMobileNav } from "@/components/client/shell-navigation";
+import { BoosterTopBar } from "@/components/booster/top-bar";
+import { useNotifications } from "@/hooks/use-notifications";
+import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 type ClientOrder = {
   id: string;
@@ -21,6 +27,22 @@ export default function ClientOrdersPage() {
   const [message] = useState<string | null>(
     "Temporary auth was removed. Connect your real backend to load client orders."
   );
+  
+  const router = useRouter();
+  const [isNotificationsOn, setIsNotificationsOn] = useState(true);
+  const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  
+  const [hideSidebar, setHideSidebar] = useState(false);
+  
+  // Persistence for UI preferences
+  useEffect(() => {
+    const saved = window.localStorage.getItem("zenith-hide-sidebar") === "true";
+    setHideSidebar(saved);
+  }, []);
+
+  const { notifications: realNotifications, unreadCount: realUnreadCount, markAllAsRead } = useNotifications();
+  const avatarUrl = session?.user?.image ?? "/booster-pfps/default-avatar.svg";
 
   const pendingOrders = useMemo(
     () => orders.filter((order) => order.status === "pending"),
@@ -31,41 +53,47 @@ export default function ClientOrdersPage() {
     [orders]
   );
 
+  const clientNavItems = [
+    { key: "home", label: "Home", href: "/", icon: <Home className="h-5 w-5" />, isActive: false },
+    { key: "browse", label: "Browse", href: "/booster-browse", icon: <Search className="h-5 w-5" />, isActive: false },
+    { key: "orders", label: "Orders", href: "/client-orders", icon: <ClipboardList className="h-5 w-5" />, isActive: true },
+    { key: "chats", label: "Messages", href: "/client-chats", icon: <MessageSquare className="h-5 w-5" />, isActive: false },
+    { key: "settings", label: "Settings", href: "/client-settings", icon: <Settings className="h-5 w-5" />, isActive: false },
+  ];
+
   return (
     <>
-      <header className="ghost-border fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface-variant/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-8 font-headline tracking-tight">
-          <Link href="/" className="text-2xl font-bold tracking-tighter text-primary-fixed transition hover:text-primary">
-            Zenith Boost
-          </Link>
+      {!hideSidebar && <ClientSidebar active="orders" />}
 
-          <div className="flex items-center gap-2">
-            <Link href="/" className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide">Home</Link>
-            <Link href="/booster-browse" className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide">Browse</Link>
-            <Link href="/client-settings" className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide">Settings</Link>
-            <Link href="/client-orders" className="top-panel-link top-panel-link-active px-4 py-2 text-sm font-bold uppercase tracking-wide">Orders</Link>
-          </div>
+      <BoosterTopBar
+        brandLabel="ZENITH CLIENT"
+        brandClassName="font-headline text-2xl font-bold uppercase tracking-tighter text-primary transition hover:text-primary-fixed"
+        headerClassName={`fixed top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/5 bg-[#0b0e14]/65 px-8 ${hideSidebar ? "" : "pl-72"} shadow-sm shadow-black/20 backdrop-blur-xl`}
+        rightClassName="flex items-center gap-6 pr-8"
+        avatarUrl={avatarUrl}
+        navItems={hideSidebar ? clientNavItems : undefined}
+        avatarAlt="User Avatar"
+        avatarBorderClassName="border-primary/30"
+        isNotificationsOn={isNotificationsOn}
+        unreadNotificationCount={realUnreadCount}
+        isNotificationsPanelOpen={isNotificationsPanelOpen}
+        onToggleNotificationsPanel={() => { setIsProfileMenuOpen(false); setIsNotificationsPanelOpen((c) => !c); }}
+        onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
+        onToggleNotifications={() => setIsNotificationsOn((c) => !c)}
+        onMarkNotificationsRead={markAllAsRead}
+        notifications={realNotifications}
+        isProfileMenuOpen={isProfileMenuOpen}
+        onToggleProfileMenu={() => { setIsNotificationsPanelOpen(false); setIsProfileMenuOpen((c) => !c); }}
+        onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
+        onProfileAction={async (action) => {
+          if (action === "Settings") { router.push("/client-settings"); return; }
+          if (action === "Logout") { await signOut({ callbackUrl: "/" }); return; }
+          setIsProfileMenuOpen(false);
+        }}
+      />
 
-          {session?.user?.role === "CLIENT" ? (
-            <ClientProfileMenu 
-              avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
-              alt={session?.user?.name ?? "Client profile"} 
-            />
-          ) : session?.user?.role === "BOOSTER" ? (
-            <BoosterProfileMenu 
-              avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
-              alt={session?.user?.name ?? "Booster profile"} 
-            />
-          ) : (
-            <Button asChild type="button" variant="ghost" size="sm" className="top-panel-link px-2 py-2">
-              <Link href="/level-up">Login</Link>
-            </Button>
-          )}
-        </div>
-      </header>
-
-      <main className="min-h-screen bg-background pt-28">
-        <div className="mx-auto max-w-6xl px-8 pb-20">
+      <main className={`${hideSidebar ? "" : "ml-64"} min-h-screen bg-background pt-24 pb-20 transition-all duration-300`}>
+        <div className="mx-auto max-w-6xl px-12">
           <h1 className="font-headline mb-3 text-5xl font-bold uppercase italic tracking-tight text-on-surface">My Orders</h1>
           <p className="mb-8 text-on-surface-variant">Track pending and accepted orders you sent.</p>
 
@@ -112,6 +140,8 @@ export default function ClientOrdersPage() {
           </section>
         </div>
       </main>
+
+      <ClientMobileNav active="orders" avatarUrl={avatarUrl} />
     </>
   );
 }

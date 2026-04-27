@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ClipboardList, Crown, HelpCircle, LayoutDashboard, MessageSquare, Settings, Wallet } from "lucide-react";
+import { BOOSTER_RANKS, calculateBoosterRank } from "@/lib/booster-ranks";
 
 import { Button } from "@/components/ui/button";
 
@@ -41,13 +42,14 @@ const getIcon = (key: BoosterSection) => {
 
 function BoosterSidebar({ active, isOnline, onToggleOnline, mainGame, rankInfo, xp = 0 }: BoosterSidebarProps) {
   const sidebarMainGame = mainGame?.trim() || "Not Set";
-  const currentRank = rankInfo || { name: "ROOKIE", color: "#CD7F32", icon: "military_tech", minXp: 0 };
+  
+  // Calculate rank from XP if rankInfo is missing or mismatched
+  const currentRank = rankInfo || calculateBoosterRank(xp);
   
   // Calculate next rank and progress
-  const { BOOSTER_RANKS } = require("@/lib/booster-ranks");
   const nextRank = BOOSTER_RANKS.find((r: any) => r.minXp > currentRank.minXp) || null;
   const xpInLevel = xp - currentRank.minXp;
-  const xpNeededForNext = nextRank ? nextRank.minXp - currentRank.minXp : 1000; // arbitrary large number if at max rank
+  const xpNeededForNext = nextRank ? nextRank.minXp - currentRank.minXp : 1000;
   const progressPct = nextRank ? Math.min(Math.floor((xpInLevel / xpNeededForNext) * 100), 100) : 100;
 
   return (

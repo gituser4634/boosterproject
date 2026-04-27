@@ -22,6 +22,7 @@ import {
   Swords,
   Wallet,
   X,
+  Settings,
 } from "lucide-react";
 import { BoosterSidebar } from "@/components/booster/shell-navigation";
 import { BoosterTopBar, type NotificationItem } from "@/components/booster/top-bar";
@@ -110,7 +111,14 @@ export default function BoosterDashboardPage() {
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [savedPrimaryGame, setSavedPrimaryGame] = useState("");
+  const [hideSidebar, setHideSidebar] = useState(false);
   const savedMainGameStorageKey = "booster-main-game";
+
+  // Persistence for UI preferences
+  useEffect(() => {
+    const saved = window.localStorage.getItem("zenith-hide-sidebar") === "true";
+    setHideSidebar(saved);
+  }, []);
 
   const { 
     notifications: realNotifications, 
@@ -243,10 +251,25 @@ export default function BoosterDashboardPage() {
     );
   };
 
+  const boosterNavItems = [
+    { key: "dashboard", label: "Dashboard", href: "/booster-dashboard", icon: <LayoutDashboard className="h-5 w-5" />, isActive: true },
+    { key: "requests", label: "Requests", href: "/booster-requests", icon: <ClipboardList className="h-5 w-5" />, isActive: false },
+    { key: "payments", label: "Payments", href: "/booster-payments", icon: <Wallet className="h-5 w-5" />, isActive: false },
+    { key: "chats", label: "Chats", href: "/booster-chats", icon: <MessageSquare className="h-5 w-5" />, isActive: false },
+    { key: "settings", label: "Settings", href: "/booster-profile", icon: <Settings className="h-5 w-5" />, isActive: false },
+  ];
+
   return (
     <>
       <BoosterTopBar
+        brandLabel="ZENITH BOOSTER"
+        brandClassName="font-headline text-2xl font-bold uppercase tracking-tighter text-cyan-400"
+        headerClassName={`fixed top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/5 bg-[#0b0e14]/65 px-8 ${hideSidebar ? "" : "pl-72"} shadow-sm shadow-black/20 backdrop-blur-xl`}
+        rightClassName="flex items-center gap-6 pr-8"
         avatarUrl={avatarUrl}
+        navItems={hideSidebar ? boosterNavItems : undefined}
+        avatarAlt="User Avatar"
+        avatarBorderClassName="border-cyan-400/30"
         isNotificationsOn={isNotificationsOn}
         unreadNotificationCount={realUnreadCount}
         isNotificationsPanelOpen={isNotificationsPanelOpen}
@@ -269,26 +292,26 @@ export default function BoosterDashboardPage() {
             router.push("/booster-profile");
             return;
           }
-
           if (action === "Logout") {
             await signOut({ callbackUrl: "/" });
             return;
           }
-
           setIsProfileMenuOpen(false);
         }}
       />
 
-      <BoosterSidebar
-        active="dashboard"
-        isOnline={isSidebarOnline}
-        onToggleOnline={() => setIsSidebarOnline((current) => !current)}
-        mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
-        rankInfo={userProfile?.boosterProfile?.rankInfo}
-        xp={userProfile?.boosterProfile?.xp}
-      />
+      {!hideSidebar && (
+        <BoosterSidebar
+          active="dashboard"
+          isOnline={isSidebarOnline}
+          onToggleOnline={() => setIsSidebarOnline((current) => !current)}
+          mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
+          rankInfo={userProfile?.boosterProfile?.rankInfo}
+          xp={userProfile?.boosterProfile?.xp}
+        />
+      )}
 
-      <main className="h-screen overflow-y-auto pb-24 pl-8 pr-8 pt-24 md:ml-64">
+      <main className={`h-screen overflow-y-auto pb-24 pl-8 pr-8 pt-24 transition-all duration-300 ${hideSidebar ? "" : "md:ml-64"}`}>
         <header className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div>
             <h1 className="font-headline mb-2 text-4xl font-bold tracking-tight text-on-surface">

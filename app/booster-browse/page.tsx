@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { BadgeCheck, Brain, Diamond, Search, Shield, Sparkles, Star, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,10 @@ import { Select } from "@/components/ui/select";
 import { AuthLoginModal } from "@/components/shared/auth-modals";
 import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
 import { BoosterProfileMenu } from "@/components/shared/booster-profile-menu";
+import { BoosterTopBar } from "@/components/booster/top-bar";
+import { useNotifications } from "@/hooks/use-notifications";
+import { Home, ClipboardList, MessageSquare, Settings as SettingsIcon, LayoutDashboard, Wallet } from "lucide-react";
+import { ClientSidebar } from "@/components/client/shell-navigation";
 
 type Booster = {
   id: string;
@@ -234,6 +238,37 @@ function BoosterBrowsePageContent() {
   const scope = searchParams.get("scope")?.toLowerCase();
   const searchScope = scope === "clients" || scope === "boosters" ? scope : "all";
 
+  const [hideSidebar, setHideSidebar] = useState(false);
+  const [isNotificationsOn, setIsNotificationsOn] = useState(true);
+  const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("zenith-hide-sidebar") === "true";
+    setHideSidebar(saved);
+  }, []);
+
+  const { notifications: realNotifications, unreadCount: realUnreadCount, markAllAsRead } = useNotifications();
+  const avatarUrl = session?.user?.image ?? "/booster-pfps/default-avatar.svg";
+
+  const clientNavItems = [
+    { key: "home", label: "Home", href: "/", icon: <Home className="h-5 w-5" />, isActive: false },
+    { key: "browse", label: "Browse", href: "/booster-browse", icon: <Search className="h-5 w-5" />, isActive: false },
+    { key: "orders", label: "Orders", href: "/client-orders", icon: <ClipboardList className="h-5 w-5" />, isActive: false },
+    { key: "chats", label: "Messages", href: "/client-chats", icon: <MessageSquare className="h-5 w-5" />, isActive: false },
+    { key: "settings", label: "Settings", href: "/client-settings", icon: <SettingsIcon className="h-5 w-5" />, isActive: false },
+  ];
+
+  const boosterNavItems = [
+    { key: "dashboard", label: "Dashboard", href: "/booster-dashboard", icon: <LayoutDashboard className="h-5 w-5" />, isActive: false },
+    { key: "requests", label: "Requests", href: "/booster-requests", icon: <ClipboardList className="h-5 w-5" />, isActive: false },
+    { key: "payments", label: "Payments", href: "/booster-payments", icon: <Wallet className="h-5 w-5" />, isActive: false },
+    { key: "chats", label: "Chats", href: "/booster-chats", icon: <MessageSquare className="h-5 w-5" />, isActive: false },
+    { key: "settings", label: "Settings", href: "/booster-profile", icon: <SettingsIcon className="h-5 w-5" />, isActive: false },
+  ];
+
+  const currentNavItems = session?.user?.role === "BOOSTER" ? boosterNavItems : clientNavItems;
+
   useEffect(() => {
     setSearchText(searchParams.get("q") ?? "");
   }, [searchParams]);
@@ -349,55 +384,79 @@ function BoosterBrowsePageContent() {
 
   return (
     <>
-      <header className="ghost-border fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface-variant/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-8 font-headline tracking-tight">
-          <Link
-            href="/"
-            className="text-2xl font-bold tracking-tighter text-primary-fixed transition hover:text-primary"
-          >
-            Zenith Boost
-          </Link>
-
-          <div className="flex items-center gap-2">
+      {session?.user ? (
+        <BoosterTopBar
+          brandLabel="ZENITH BOOST"
+          brandHref="/"
+          brandClassName="text-2xl font-bold tracking-tighter text-primary-fixed transition hover:text-primary"
+          headerClassName="fixed top-0 z-50 flex h-16 w-full items-center justify-between border-b border-white/10 bg-[#0c0e14]/70 px-8 shadow-md backdrop-blur-xl"
+          rightClassName="flex items-center gap-6"
+          avatarUrl={avatarUrl}
+          navItems={hideSidebar ? currentNavItems : undefined}
+          avatarAlt="User Avatar"
+          avatarBorderClassName="border-primary/20"
+          isNotificationsOn={isNotificationsOn}
+          unreadNotificationCount={realUnreadCount}
+          isNotificationsPanelOpen={isNotificationsPanelOpen}
+          onToggleNotificationsPanel={() => {
+            setIsProfileMenuOpen(false);
+            setIsNotificationsPanelOpen((c) => !c);
+          }}
+          onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
+          onToggleNotifications={() => setIsNotificationsOn((c) => !c)}
+          onMarkNotificationsRead={markAllAsRead}
+          notifications={realNotifications}
+          isProfileMenuOpen={isProfileMenuOpen}
+          onToggleProfileMenu={() => {
+            setIsNotificationsPanelOpen(false);
+            setIsProfileMenuOpen((c) => !c);
+          }}
+          onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
+          onProfileAction={async (action) => {
+            if (action === "Settings") { router.push(session?.user?.role === "BOOSTER" ? "/booster-profile" : "/client-settings"); return; }
+            if (action === "Logout") { await signOut({ callbackUrl: "/" }); return; }
+            setIsProfileMenuOpen(false);
+          }}
+        />
+      ) : (
+        <header className="ghost-border fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface-variant/70 backdrop-blur-xl">
+          <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-8 font-headline tracking-tight">
             <Link
               href="/"
-              className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide"
+              className="text-2xl font-bold tracking-tighter text-primary-fixed transition hover:text-primary"
             >
-              Home
+              Zenith Boost
             </Link>
-            <Link
-              href="/booster-browse"
-              className="top-panel-link top-panel-link-active px-4 py-2 text-sm font-bold uppercase tracking-wide"
-            >
-              Browse
-            </Link>
-          </div>
 
-          <div className="flex items-center gap-4">
-            <a
-              href="https://discord.gg/FkGNYr2R"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Join our Discord"
-              className="top-panel-icon"
-            >
-              <img
-                src="https://cdn.simpleicons.org/discord/5865F2"
-                alt="Discord"
-                className="h-5 w-5 opacity-90"
-              />
-            </a>
-            {session?.user && !isBoosterLoggedIn ? (
-              <ClientProfileMenu 
-                avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
-                alt={session?.user?.name ?? "Client profile"} 
-              />
-            ) : isBoosterLoggedIn ? (
-              <BoosterProfileMenu 
-                avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
-                alt={session?.user?.name ?? "Booster profile"} 
-              />
-            ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide"
+              >
+                Home
+              </Link>
+              <Link
+                href="/booster-browse"
+                className="top-panel-link top-panel-link-active px-4 py-2 text-sm font-bold uppercase tracking-wide"
+              >
+                Browse
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <a
+                href="https://discord.gg/FkGNYr2R"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Join our Discord"
+                className="top-panel-icon"
+              >
+                <img
+                  src="https://cdn.simpleicons.org/discord/5865F2"
+                  alt="Discord"
+                  className="h-5 w-5 opacity-90"
+                />
+              </a>
               <Button
                 type="button"
                 variant="ghost"
@@ -407,12 +466,16 @@ function BoosterBrowsePageContent() {
               >
                 Login
               </Button>
-            )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
-      <main className="min-h-screen bg-background pt-28">
+      {isClientLoggedIn && !hideSidebar && (
+        <ClientSidebar active="browse" />
+      )}
+
+      <main className={`min-h-screen bg-background pt-28 transition-all duration-300 ${isClientLoggedIn && !hideSidebar ? "ml-64" : ""}`}>
         <section className="border-y border-outline-variant/10 bg-surface-container-low py-16">
           <div className="container mx-auto px-8">
             <div className="mb-10">

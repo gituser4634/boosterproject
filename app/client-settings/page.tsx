@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { Copy, UserCircle, Edit3 } from "lucide-react";
+import { Copy, UserCircle, Edit3, Home, Search, ClipboardList, MessageSquare, Settings, MonitorSmartphone } from "lucide-react";
 import { ClientProfileMenu } from "@/components/shared/client-profile-menu";
 import { BoosterProfileMenu } from "@/components/shared/booster-profile-menu";
 import { PickerSheet } from "@/components/booster/picker-sheet";
@@ -15,6 +15,9 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { FileInput } from "@/components/ui/file-input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
+import { ClientSidebar, ClientMobileNav } from "@/components/client/shell-navigation";
+import { BoosterTopBar } from "@/components/booster/top-bar";
+import { useNotifications } from "@/hooks/use-notifications";
 
 export default function ClientSettingsPage() {
   const { data: session, update } = useSession();
@@ -34,6 +37,19 @@ export default function ClientSettingsPage() {
   const [statusMessage, setStatusMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [hideSidebar, setHideSidebar] = useState(false);
+
+  // Persistence for UI preferences
+  useEffect(() => {
+    const saved = window.localStorage.getItem("zenith-hide-sidebar") === "true";
+    setHideSidebar(saved);
+  }, []);
+
+  const toggleHideSidebar = () => {
+    const next = !hideSidebar;
+    setHideSidebar(next);
+    window.localStorage.setItem("zenith-hide-sidebar", String(next));
+  };
 
   // Username uniqueness
   const [isUsernameUnique, setIsUsernameUnique] = useState<boolean | null>(true);
@@ -44,6 +60,11 @@ export default function ClientSettingsPage() {
   const [nextPassword, setNextPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isNotificationsOn, setIsNotificationsOn] = useState(true);
+  const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  
+  const { notifications: realNotifications, unreadCount: realUnreadCount, markAllAsRead } = useNotifications();
 
   // Dialog State
   const [openDialog, setOpenDialog] = useState<string | null>(null);
@@ -310,39 +331,47 @@ export default function ClientSettingsPage() {
     );
   }
 
+  const clientNavItems = [
+    { key: "home", label: "Home", href: "/", icon: <Home className="h-5 w-5" />, isActive: false },
+    { key: "browse", label: "Browse", href: "/booster-browse", icon: <Search className="h-5 w-5" />, isActive: false },
+    { key: "orders", label: "Orders", href: "/client-orders", icon: <ClipboardList className="h-5 w-5" />, isActive: false },
+    { key: "chats", label: "Messages", href: "/client-chats", icon: <MessageSquare className="h-5 w-5" />, isActive: false },
+    { key: "settings", label: "Settings", href: "/client-settings", icon: <Settings className="h-5 w-5" />, isActive: true },
+  ];
+
   return (
     <>
-      <header className="ghost-border fixed top-0 z-50 w-full border-b border-outline-variant/20 bg-surface-variant/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-8 font-headline tracking-tight">
-          <Link href="/" className="text-2xl font-bold tracking-tighter text-primary-fixed transition hover:text-primary">
-            Zenith Boost
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link href="/" className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide">Home</Link>
-            <Link href="/booster-browse" className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide">Browse</Link>
-            <Link href="/client-settings" className="top-panel-link top-panel-link-active px-4 py-2 text-sm font-bold uppercase tracking-wide">Settings</Link>
-            <Link href="/client-orders" className="top-panel-link px-4 py-2 text-sm font-bold uppercase tracking-wide">Orders</Link>
-          </div>
-          {session?.user?.role === "CLIENT" ? (
-            <ClientProfileMenu 
-              avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
-              alt={session?.user?.name ?? "Client profile"} 
-            />
-          ) : session?.user?.role === "BOOSTER" ? (
-            <BoosterProfileMenu 
-              avatarUrl={session?.user?.image ?? "/booster-pfps/default-avatar.svg"} 
-              alt={session?.user?.name ?? "Booster profile"} 
-            />
-          ) : (
-            <Button asChild type="button" variant="ghost" size="sm" className="top-panel-link px-2 py-2">
-              <Link href="/level-up">Login</Link>
-            </Button>
-          )}
-        </div>
-      </header>
+      {!hideSidebar && <ClientSidebar active="settings" />}
 
-      <main className="min-h-screen bg-background pt-28">
-        <div className="mx-auto max-w-5xl px-8 pb-20">
+      <BoosterTopBar
+        brandLabel="ZENITH CLIENT"
+        brandClassName="font-headline text-2xl font-bold uppercase tracking-tighter text-primary transition hover:text-primary-fixed"
+        headerClassName={`fixed top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/5 bg-[#0b0e14]/65 px-8 ${hideSidebar ? "" : "pl-72"} shadow-sm shadow-black/20 backdrop-blur-xl`}
+        rightClassName="flex items-center gap-6 pr-8"
+        avatarUrl={avatarUrl}
+        navItems={hideSidebar ? clientNavItems : undefined}
+        avatarAlt="User Avatar"
+        avatarBorderClassName="border-primary/30"
+        isNotificationsOn={isNotificationsOn}
+        unreadNotificationCount={realUnreadCount}
+        isNotificationsPanelOpen={isNotificationsPanelOpen}
+        onToggleNotificationsPanel={() => { setIsProfileMenuOpen(false); setIsNotificationsPanelOpen((c) => !c); }}
+        onCloseNotificationsPanel={() => setIsNotificationsPanelOpen(false)}
+        onToggleNotifications={() => setIsNotificationsOn((c) => !c)}
+        onMarkNotificationsRead={markAllAsRead}
+        notifications={realNotifications}
+        isProfileMenuOpen={isProfileMenuOpen}
+        onToggleProfileMenu={() => { setIsNotificationsPanelOpen(false); setIsProfileMenuOpen((c) => !c); }}
+        onCloseProfileMenu={() => setIsProfileMenuOpen(false)}
+        onProfileAction={async (action) => {
+          if (action === "Settings") { setIsProfileMenuOpen(false); return; }
+          if (action === "Logout") { await signOut({ callbackUrl: "/" }); return; }
+          setIsProfileMenuOpen(false);
+        }}
+      />
+
+      <main className={`${hideSidebar ? "" : "ml-64"} min-h-screen bg-background pt-24 pb-20 transition-all duration-300`}>
+        <div className={`mx-auto ${hideSidebar ? "max-w-7xl" : "max-w-5xl"} px-12`}>
           <h1 className="font-headline mb-3 text-5xl font-bold uppercase italic tracking-tight text-on-surface">Client Settings</h1>
           <p className="mb-8 text-on-surface-variant">Manage your profile and account security.</p>
 
@@ -455,6 +484,30 @@ export default function ClientSettingsPage() {
             </div>
           </section>
 
+          {/* Display Preferences */}
+          <section className="ghost-border mb-6 rounded-xl bg-surface-container-low p-8">
+            <div className="mb-6 flex items-center gap-4">
+              <div className="rounded-lg bg-primary/10 p-3">
+                <MonitorSmartphone className="h-5 w-5 text-primary" />
+              </div>
+              <h2 className="font-headline text-2xl font-bold uppercase tracking-tight">Display Preferences</h2>
+            </div>
+            
+            <div className="flex items-center justify-between p-4 rounded-lg bg-surface-container-lowest border border-white/5">
+              <div className="space-y-1">
+                <Label className="font-label text-sm font-bold text-on-surface">Hide Sidebar</Label>
+                <p className="text-xs text-on-surface-variant">Switch to a minimal icon-based top navigation. Perfect for more focus.</p>
+              </div>
+              <Button 
+                type="button" 
+                onClick={toggleHideSidebar}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${hideSidebar ? 'bg-primary' : 'bg-surface-container-highest'}`}
+              >
+                <span className={`${hideSidebar ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
+              </Button>
+            </div>
+          </section>
+
           {/* Password */}
           <section className="ghost-border rounded-xl bg-surface-container-low p-8">
             <h2 className="font-headline mb-6 text-2xl font-bold">Change Password</h2>
@@ -485,6 +538,8 @@ export default function ClientSettingsPage() {
           </section>
         </div>
       </main>
+
+      <ClientMobileNav active="settings" avatarUrl={avatarUrl} />
 
       <Dialog open={!!openDialog} onOpenChange={() => setOpenDialog(null)}>
         <DialogContent className="sm:max-w-[425px] border-white/10 bg-[#0c0e14] text-white shadow-[0_0_50px_rgba(34,211,238,0.15)]">
