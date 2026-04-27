@@ -920,7 +920,7 @@ export default function BoosterProfilePage() {
 
       {isLoggedInBooster && !hideSidebar ? (
         <BoosterSidebar
-          active="settings"
+          active="dashboard"
           isOnline={isOnline}
           onToggleOnline={handleToggleOnline}
           mainGame={userProfile?.boosterProfile?.mainGame?.name || savedPrimaryGame}
