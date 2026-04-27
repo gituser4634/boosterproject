@@ -1,0 +1,39 @@
+# Files and directories to ignore during Vercel builds
+
+# Test files
+test.js
+test2.js
+test3.ts
+test4.ts
+test5.ts
+test-supabase.ts
+test-prisma.js
+check-db.ts
+
+# Development utilities
+scratch/
+error_log.txt
+dev.db
+
+# Editor and OS files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+.next/
+out/
+node_modules/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation that doesn't need to be deployed
+*.md
+CONTRIBUTING.md
+LICENSE
+
+# CI/CD
+.github/

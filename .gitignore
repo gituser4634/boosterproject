@@ -29,3 +29,13 @@ Thumbs.db
 scratch/
 error_log.txt
 *.db
+
+# Test files (should not be deployed)
+test.js
+test2.js
+test3.ts
+test4.ts
+test5.ts
+test-supabase.ts
+test-prisma.js
+check-db.ts

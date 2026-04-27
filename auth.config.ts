@@ -1,7 +1,13 @@
 import type { NextAuthConfig } from "next-auth";
 
+const NEXTAUTH_URL = process.env.NEXTAUTH_URL || process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : "http://localhost:3000";
+
 export const authConfig = {
   secret: process.env.AUTH_SECRET,
+  trustHost: true, // Required for non-localhost URLs
+  basePath: "/api/auth", // NextAuth API endpoint
   session: { strategy: "jwt" },
   pages: {
     signIn: "/level-up",
